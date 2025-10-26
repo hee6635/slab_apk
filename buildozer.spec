@@ -12,7 +12,7 @@ fullscreen = 0
 # android.ndk_path = /home/hee/Android/Sdk/ndk/26.3.11579264
 android.archs = arm64-v8a
 android.api = 34
-android.minapi = 21
+android.minapi = 24
 android.ndk_api = 24
 
 [buildozer]
