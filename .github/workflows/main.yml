@@ -1,7 +1,7 @@
 name: Build Android APK
 
 on:
-  workflow_dispatch: {}     # 수동 실행 버튼
+  workflow_dispatch: {}
   push:
     branches: [ main ]
   pull_request:
@@ -16,17 +16,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build with Buildozer
-        id: buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
-        env:
-          USER: root               # ✅ 추가: 컨테이너 내부 권한 오류 방지
-        with:
-          workdir: .
-          buildozer_version: stable
+      # Buildozer 공식 도커 이미지로 직접 빌드
+      - name: Build with Docker (Buildozer)
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/home/user/app" \
+            -w /home/user/app \
+            kivy/buildozer:stable \
+            bash -lc "buildozer android debug"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: slab_apk-debug
-          path: ${{ steps.buildozer.outputs.filename }}
+          path: bin/*.apk
