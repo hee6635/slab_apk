@@ -11,6 +11,7 @@ jobs:
   build-android:
     name: Build for Android
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -18,6 +19,8 @@ jobs:
       - name: Build with Buildozer
         id: buildozer
         uses: ArtemSBulgakov/buildozer-action@v1
+        env:
+          USER: root               # ✅ 추가: 컨테이너 내부 권한 오류 방지
         with:
           workdir: .
           buildozer_version: stable
