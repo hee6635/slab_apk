@@ -3,12 +3,14 @@
 import os, json
 from kivy.app import App
 from kivy.lang import Builder
-from kivy.properties import StringProperty, NumericProperty, BooleanProperty, ListProperty
+from kivy.properties import StringProperty, NumericProperty, BooleanProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.core.window import Window
 
 KV = r"""
+#:import dp kivy.metrics.dp
 #:set P 12
+
 <SlimLabel@Label>:
     size_hint_y: None
     height: self.texture_size[1] + dp(6)
@@ -108,7 +110,7 @@ KV = r"""
             text: "설정"
             on_release: app.open_settings()
 
-    # 강번
+    # 강번 입력
     BoxLayout:
         orientation: 'vertical'
         spacing: dp(4)
@@ -200,34 +202,26 @@ KV = r"""
                     halign: 'left'; valign: 'top'
                     text_size: self.width, None
                     font_size: app.font_result
-
 """
 
 def round_half_up(n):
     return int(float(n) + 0.5)
 
 class SlabApp(App):
-    # 설정 값 (바인딩)
     prefix = StringProperty("SG94")
     round_result = BooleanProperty(False)
     result_font_size = NumericProperty(16)
     hide_mm = BooleanProperty(False)
     loss_per_cut = NumericProperty(15.0)
 
-    # 폰트 (기기 해상도에 맞춘 기본값)
     font_title = NumericProperty(18)
     font_entry = NumericProperty(16)
     font_result = NumericProperty(16)
-
-    # 결과 텍스트
     result_text = StringProperty("")
-
-    # 내부
     _generated_code = StringProperty("")
     _settings_file = None
 
     def build(self):
-        # 기기 해상도에 따라 살짝 확대 (선택)
         try:
             if min(Window.size) < 720:
                 self.font_title = 18
@@ -240,13 +234,10 @@ class SlabApp(App):
         except Exception:
             pass
 
-        # 설정 파일 경로 (안드로이드 호환)
         self._settings_file = os.path.join(self.user_data_dir, "settings.json")
         self._load_settings()
-
         return Builder.load_string(KV)
 
-    # ---------- 설정 로드/세이브 ----------
     def _load_settings(self):
         if os.path.exists(self._settings_file):
             try:
@@ -257,12 +248,10 @@ class SlabApp(App):
                 self.result_font_size = int(data.get("result_font_size", 16))
                 self.hide_mm = data.get("hide_mm", False)
                 self.loss_per_cut = float(data.get("loss", 15))
-                # 폰트 반영
                 self.font_result = self.result_font_size
             except Exception:
                 pass
         else:
-            # 기본 저장
             self.save_settings()
 
     def save_settings(self):
@@ -285,30 +274,21 @@ class SlabApp(App):
             self.hide_mm = bool(hide_mm)
             self.loss_per_cut = float(loss_text or 15)
         except Exception:
-            # 잘못된 입력은 기본값
             self.result_font_size = 16
             self.loss_per_cut = 15.0
         self.font_result = self.result_font_size
         self.save_settings()
 
+    # ✅ 중복 로드 제거 (핫픽스)
     def open_settings(self):
-        from kivy.uix.modalview import ModalView
-        Builder.load_string("")  # NOP to ensure KV loaded
-        SettingsPopup = Builder.load_string(KV).children  # not used; workaround for kv scope
-        # 간단 생성
-        from kivy.lang import Builder as KVB
-        popup = KVB.load_string(KV).children if False else None  # NOP
-        # 실제 생성
         from kivy.factory import Factory
         Factory.SettingsPopup().open()
 
-    # ---------- 보조 ----------
     def _update_generated_code(self, front, back):
         front = (front or "").strip()
         back = (back or "").strip()
         self._generated_code = f"{self.prefix}{front}-0{back}" if (front and back) else ""
 
-    # ---------- 계산 ----------
     def calculate(self, slab_len_text, pieces_text_list, code_front, code_back):
         try:
             slab_len = float(slab_len_text)
@@ -336,7 +316,6 @@ class SlabApp(App):
         add_each = remain / len(guides)
 
         real_lengths = [g + add_each for g in guides]
-
         centers = []
         accum = 0
         for l in real_lengths[:-1]:
@@ -349,7 +328,6 @@ class SlabApp(App):
         code_result = f"▶ 강번: {self.prefix}{front}-0{back}\n\n" if (front and back) else ""
 
         mm = "" if self.hide_mm else " mm"
-
         header = []
         header.append(f"▶ Slab 실길이: {slab_len:,.1f}{mm}")
         for i, g in enumerate(guides):
@@ -357,33 +335,25 @@ class SlabApp(App):
         header.append(f"▶ 절단 손실: {cut_loss}{mm} × {num} = {total_loss}{mm}")
         header.append(f"▶ 전체 여유길이: {remain:,.1f}{mm} → 각 +{add_each:,.1f}{mm}\n")
 
-        # 반올림 옵션
-        if self.round_result:
-            real_lengths_display = [round_half_up(r) for r in real_lengths]
-            centers_display = [round_half_up(c) for c in centers]
-        else:
-            real_lengths_display = [round(r, 1) for r in real_lengths]
-            centers_display = [round(c, 1) for c in centers]
+        real_lengths_display = [round_half_up(r) if self.round_result else round(r, 1) for r in real_lengths]
+        centers_display = [round_half_up(c) if self.round_result else round(c, 1) for c in centers]
 
         body = ["▶ 각 Slab별 실제 절단 길이:"]
         for i, r in enumerate(real_lengths_display):
-            if isinstance(r, int):
-                body.append(f"   {i+1}번: {r:,}{mm}")
-            else:
-                body.append(f"   {i+1}번: {r:,.1f}{mm}")
-
+            body.append(f"   {i+1}번: {r:,.1f}{mm}")
         body.append("")
         body.append(f"▶ 절단센터 위치:{'' if self.hide_mm else '(mm)'} {centers_display}\n")
 
         visual = "H"
         for i, l in enumerate(real_lengths_display):
-            mark_val = l + round_half_up(cut_loss / 2) if isinstance(l, int) else round_half_up(l + (cut_loss / 2))
+            mark_val = round_half_up(l + (cut_loss / 2))
             visual += f"-{i+1}번({mark_val})-"
         visual += "T"
         body.append("▶ 시각화 (실제 마킹 위치):")
         body.append(visual)
 
         self.result_text = code_result + "\n".join(header + body)
+
 
 if __name__ == "__main__":
     SlabApp().run()
