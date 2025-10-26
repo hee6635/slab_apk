@@ -16,13 +16,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # (선택) 진단용: 레포 루트와 spec 확인
+      - name: Show repo tree (diagnostic)
+        run: |
+          pwd
+          ls -al
+          echo "---- buildozer.spec head ----"
+          head -n 40 buildozer.spec || true
+
       - name: Build with Docker (Buildozer)
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/home/user/app" \
             -w /home/user/app \
             kivy/buildozer:latest \
-            buildozer -v android debug
+            -v android debug
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
