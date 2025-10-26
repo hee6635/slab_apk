@@ -1,0 +1,29 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch: {}     # 수동 실행 버튼
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-android:
+    name: Build for Android
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build with Buildozer
+        id: buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
+        with:
+          workdir: .
+          buildozer_version: stable
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: slab_apk-debug
+          path: ${{ steps.buildozer.outputs.filename }}
