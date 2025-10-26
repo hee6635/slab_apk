@@ -16,14 +16,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # (선택) 첫 실행 진단: 루트에 spec 있는지 확인
-      - name: Show repo tree (diagnostic)
-        run: |
-          pwd
-          ls -al
-          echo "---- buildozer.spec head ----"
-          head -n 40 buildozer.spec || true
-
       - name: Build with Buildozer
         id: buildozer
         uses: ArtemSBulgakov/buildozer-action@v1
@@ -32,8 +24,7 @@ jobs:
           PIP_BREAK_SYSTEM_PACKAGES: "1"   # PEP 668 우회
         with:
           workdir: .
-          buildozer_version: latest        # 또는 stable
-          # command 기본값: "buildozer android debug"
+          buildozer_version: stable        # 🔧 'latest' 말고 'stable' 로 고정
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
