@@ -16,16 +16,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ① 이전 실행의 잘못된 캐시/경로 제거
+      - name: Clean previous buildozer caches
+        run: rm -rf .buildozer .buildozer_global
+
+      # ② Buildozer로 빌드 실행
       - name: Build with Buildozer
         id: buildozer
         uses: ArtemSBulgakov/buildozer-action@v1
         env:
           USER: root
-          PIP_BREAK_SYSTEM_PACKAGES: "1"   # PEP 668 우회
+          PIP_BREAK_SYSTEM_PACKAGES: "1"
+          BUILDOZER_ANDROID_NDK_VERSION: "25.2.9519653"
         with:
           workdir: .
-          buildozer_version: stable        # 🔧 'latest' 말고 'stable' 로 고정
+          buildozer_version: stable
 
+      # ③ 권한 복구 (Post job cleanup 오류 방지)
+      - name: Fix workspace permissions
+        run: sudo chown -R $USER:$USER "${{ github.workspace }}"
+
+      # ④ 빌드 결과물 업로드
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
