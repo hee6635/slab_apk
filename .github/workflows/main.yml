@@ -16,14 +16,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Build with valid Buildozer Docker image
       - name: Build with Docker (Buildozer)
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/home/user/app" \
-            -w /home/user/app" \
+            -w /home/user/app \
             kivy/buildozer:latest \
-            bash -lc "buildozer android debug"
+            bash -lc 'buildozer android debug'
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
