@@ -1,29 +1,30 @@
 [app]
 title = 후판 계산기
 package.name = slabcalc
-package.domain = org.test
+package.domain = org.local
 
-# ✅ 누락된 항목 추가
+# 프로젝트 루트에서 빌드
 source.dir = .
+
+# 포함 확장자 (이미지/폰트/텍스트 포함)
+source.include_exts = py,kv,png,jpg,ttf,txt
+
+# 앱 버전
 version = 0.1
 
-# 파일/아이콘
-source.include_exts = py,kv,json,png
-icon.filename = %(source.dir)s/icon.png   # 아이콘 파일명이 다르면 여기 맞추세요
-
-# 엔트리/의존성
-entrypoint = main.py
+# 필수 의존성 (최소)
 requirements = python3,kivy
 
-# 표시/화면
-orientation = portrait
-fullscreen = 0
-android.permissions = 
+# 아이콘 (레포 루트에 icon.png 있어야 함)
+icon.filename = icon.png
 
 [buildozer]
 log_level = 2
-android.api = 33
+warn_on_root = 1
+
+[android]
+# 당신이 성공했던 조합 유지
+android.api = 34
 android.minapi = 24
-android.ndk = 25b
-android.archs = arm64-v8a, armeabi-v7a
-android.debug = 1
+android.ndk_api = 24
+android.archs = arm64-v8a
