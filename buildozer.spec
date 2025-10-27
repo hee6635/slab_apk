@@ -4,11 +4,10 @@ package.name = slabcalc
 package.domain = org.local
 
 source.dir = .
-source.include_exts = py,kv,png,jpg,ttf,txt
+source.include_exts = py,kv,png,jpg,ttf,txt,json
 version = 0.1
 requirements = python3,kivy
 icon.filename = icon.png
-
 orientation = portrait
 fullscreen = 0
 
@@ -21,3 +20,4 @@ android.api = 34
 android.minapi = 24
 android.ndk_api = 24
 android.archs = arm64-v8a
+android.permissions = READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
