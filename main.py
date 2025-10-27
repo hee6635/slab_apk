@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 import os
 from kivy.app import App
@@ -12,6 +11,7 @@ from kivy.core.window import Window
 from kivy.uix.modalview import ModalView
 from kivy.properties import NumericProperty, ListProperty, BooleanProperty
 from kivy.graphics import Color, RoundedRectangle
+from kivy.uix.button import Button  # ← 추가
 
 FONT = "NanumGothic"
 
@@ -27,8 +27,8 @@ def _num_or_none(s):
 def round_half_up(n):
     return int(float(n) + 0.5)
 
-# 둥근 버튼
-class RoundedButton(Label):
+# 둥근 버튼 (Button 기반으로 변경: 터치 충돌 방지)
+class RoundedButton(Button):
     radius = NumericProperty(dp(8))
     bg_color = ListProperty([0.23, 0.53, 0.23, 1])
     fg_color = ListProperty([1, 1, 1, 1])
@@ -36,10 +36,9 @@ class RoundedButton(Label):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.font_name = FONT
+        self.background_normal = ""
+        self.background_down = ""
         self.color = self.fg_color
-        self.halign = "center"
-        self.valign = "middle"
-        self.bind(size=lambda *_: setattr(self, "text_size", self.size))
         with self.canvas.before:
             self._c = Color(*self.bg_color)
             self._r = RoundedRectangle(pos=self.pos, size=self.size,
@@ -60,7 +59,7 @@ class DigitInput(TextInput):
         self.halign = "center"
         self.font_name = FONT
         self.font_size = dp(16)
-        self.height = dp(32)  # 입력창 높이 축소
+        self.height = dp(32)
         self.background_normal = ""
         self.background_active = ""
         self.cursor_width = dp(2)
@@ -98,7 +97,7 @@ class SlabApp(App):
         btn_settings = RoundedButton(text="설정", size_hint=(None, 1), width=dp(68),
                                      bg_color=[0.27, 0.27, 0.27, 1],
                                      fg_color=[1, 1, 1, 1])
-        btn_settings.bind(on_touch_up=lambda *_: self.open_settings())
+        btn_settings.bind(on_release=lambda *_: self.open_settings())  # ← on_release
         top.add_widget(btn_settings)
         root.add_widget(top)
 
@@ -146,7 +145,7 @@ class SlabApp(App):
         grid.add_widget(self.in_p2)
         b21 = RoundedButton(text="← 1번", bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1],
                             size_hint=(None,1), width=dp(60))
-        b21.bind(on_touch_up=lambda *_: self._copy(self.in_p1, self.in_p2))
+        b21.bind(on_release=lambda *_: self._copy(self.in_p1, self.in_p2))  # ← on_release
         grid.add_widget(b21)
         grid.add_widget(Label())
 
@@ -155,11 +154,11 @@ class SlabApp(App):
         grid.add_widget(self.in_p3)
         b31 = RoundedButton(text="← 1번", bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1],
                             size_hint=(None,1), width=dp(60))
-        b31.bind(on_touch_up=lambda *_: self._copy(self.in_p1, self.in_p3))
+        b31.bind(on_release=lambda *_: self._copy(self.in_p1, self.in_p3))  # ← on_release
         grid.add_widget(b31)
         b32 = RoundedButton(text="← 2번", bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1],
                             size_hint=(None,1), width=dp(60))
-        b32.bind(on_touch_up=lambda *_: self._copy(self.in_p2, self.in_p3))
+        b32.bind(on_release=lambda *_: self._copy(self.in_p2, self.in_p3))  # ← on_release
         grid.add_widget(b32)
         root.add_widget(grid)
 
@@ -167,7 +166,7 @@ class SlabApp(App):
         btn_calc = RoundedButton(text="계산하기", bg_color=[0.23, 0.53, 0.23, 1],
                                  fg_color=[1,1,1,1], size_hint=(1, None),
                                  height=dp(44), radius=dp(10))
-        btn_calc.bind(on_touch_up=lambda *_: self.calculate())
+        btn_calc.bind(on_release=lambda *_: self.calculate())  # ← on_release
         root.add_widget(btn_calc)
 
         # 결과 영역
@@ -248,10 +247,9 @@ class SlabApp(App):
         box.add_widget(Label(text="설정은 추후 추가 예정입니다.",font_name=FONT,color=(0,0,0,1)))
         close=RoundedButton(text="닫기",bg_color=[0.8,0.8,0.8,1],fg_color=[0,0,0,1],
                             size_hint=(1,None),height=dp(40))
-        close.bind(on_touch_up=lambda *_: mv.dismiss())
+        close.bind(on_release=lambda *_: mv.dismiss())  # ← on_release
         box.add_widget(close)
         mv.add_widget(box); mv.open()
 
 if __name__ == "__main__":
     SlabApp().run()
-
