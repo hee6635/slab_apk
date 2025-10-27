@@ -240,31 +240,24 @@ KV = r"""
                     font_name: app.font_name if app.font_name else None
 """
 
-def round_half_up(n):
-    return int(float(n) + 0.5)
+def round_half_up(n): return int(float(n) + 0.5)
 
 class SlabApp(App):
-    # 설정 값
     prefix = StringProperty("SG94")
     round_result = BooleanProperty(False)
     result_font_size = NumericProperty(16)
     hide_mm = BooleanProperty(False)
     loss_per_cut = NumericProperty(15.0)
 
-    # 폰트/크기
     font_title = NumericProperty(18)
     font_entry = NumericProperty(16)
     font_result = NumericProperty(16)
-    font_name = StringProperty("")  # NanumGothic.ttf 있으면 사용
+    font_name = StringProperty("")
 
-    # 결과
     result_text = StringProperty("")
-
-    # 내부
     _settings_file = None
 
     def build(self):
-        # 선택적: 화면 크기에 따른 기본 폰트 크기
         try:
             if min(Window.size) < 720:
                 self.font_title = 18; self.font_entry = 16; self.font_result = 16
@@ -273,19 +266,15 @@ class SlabApp(App):
         except Exception:
             pass
 
-        # 앱 루트/폰트 확인(같은 폴더 또는 assets에 포함)
         for cand in ("NanumGothic.ttf", "./NanumGothic.ttf"):
             if os.path.exists(cand):
                 self.font_name = cand
                 break
 
-        # 설정 로드
         self._settings_file = os.path.join(self.user_data_dir, "settings.json")
         self._load_settings()
-
         return Builder.load_string(KV)
 
-    # ---------- 설정 로드/세이브 ----------
     def _load_settings(self):
         if os.path.exists(self._settings_file):
             try:
@@ -327,16 +316,13 @@ class SlabApp(App):
         self.font_result = self.result_font_size
         self.save_settings()
 
-    # ---------- UI 액션 ----------
     def open_settings(self):
         from kivy.factory import Factory
         Factory.SettingsPopup().open()
 
     def _update_generated_code(self, front, back):
-        # 필요시 강번 프리뷰 만들어 표시 가능
         pass
 
-    # ---------- 계산 ----------
     def calculate(self, slab_len_text, pieces_text_list, code_front, code_back):
         try:
             slab_len = float((slab_len_text or "").strip())
@@ -411,12 +397,31 @@ class SlabApp(App):
         self.result_text = code_result + "\n".join(header + body)
 
 
+# --------- 여기부터: 크래시 로그를 /storage/emulated/0/1/startup_error.txt 로 저장 ---------
+def _save_crash_to_fixed_path(exc_text: str):
+    target_dir = "/storage/emulated/0/1"
+    target_path = os.path.join(target_dir, "startup_error.txt")
+    try:
+        os.makedirs(target_dir, exist_ok=True)
+        with open(target_path, "w", encoding="utf-8") as f:
+            f.write(exc_text)
+    except Exception:
+        # 최후 보루: 앱 전용 폴더에도 한 번 더 남겨둔다(보이지 않으면 무시해도 됨)
+        try:
+            app = App.get_running_app()
+            if app and hasattr(app, "user_data_dir"):
+                upath = os.path.join(app.user_data_dir, "startup_error.txt")
+                os.makedirs(os.path.dirname(upath), exist_ok=True)
+                with open(upath, "w", encoding="utf-8") as f:
+                    f.write(exc_text)
+        except Exception:
+            pass
+# -------------------------------------------------------------------------------------------
+
 if __name__ == "__main__":
     try:
         SlabApp().run()
     except Exception:
-        # 폰에서 바로 확인 가능하도록 외부 저장소에 오류 기록
-        path = "/storage/emulated/0/startup_error.txt"
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(traceback.format_exc())
+        msg = traceback.format_exc()
+        _save_crash_to_fixed_path(msg)
         raise
