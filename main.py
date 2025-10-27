@@ -10,12 +10,12 @@ from kivy.uix.scrollview import ScrollView
 from kivy.core.window import Window
 from kivy.uix.modalview import ModalView
 from kivy.properties import NumericProperty, ListProperty, BooleanProperty
+from kivy.graphics import Color, RoundedRectangle
 from kivy.uix.button import Button
 from kivy.uix.image import Image
-from kivy.graphics import Color, RoundedRectangle
 
-FONT = "NanumGothic"     # 루트에 NanumGothic.ttf
-WARN_IMG = "warning.png" # 루트에 warning.png
+FONT = "NanumGothic"
+WARN_IMG = "warning.png"  # 루트에 warning.png 업로드됨
 
 def _num_or_none(s):
     try:
@@ -29,7 +29,7 @@ def _num_or_none(s):
 def round_half_up(n):
     return int(float(n) + 0.5)
 
-# ── 둥근 버튼(충돌 방지를 위해 Button 기반) ─────────────────────────
+# ── 둥근 버튼 (Button 기반: 터치 충돌 방지) ───────────────────────
 class RoundedButton(Button):
     radius = NumericProperty(dp(8))
     bg_color = ListProperty([0.23, 0.53, 0.23, 1])
@@ -50,7 +50,7 @@ class RoundedButton(Button):
     def _sync_bg(self, *a):
         self._r.pos, self._r.size = self.pos, self.size
 
-# ── 숫자 입력 ──────────────────────────────────────────────────────
+# ── 숫자 입력 ────────────────────────────────────────────────────
 class DigitInput(TextInput):
     max_len = NumericProperty(3)
     allow_float = BooleanProperty(False)
@@ -81,7 +81,7 @@ class DigitInput(TextInput):
             filtered = filtered[:remain]
         return super().insert_text(filtered, from_undo=from_undo)
 
-# ── 앱 ────────────────────────────────────────────────────────────
+# ── 앱 ──────────────────────────────────────────────────────────
 class SlabApp(App):
     prefix = "SG94"
 
@@ -90,7 +90,7 @@ class SlabApp(App):
 
         root = BoxLayout(orientation="vertical", padding=[dp(12), dp(8)], spacing=dp(8))
 
-        # 제목 + 설정(오른쪽 상단)
+        # 제목 + 설정 버튼(우상단)
         title = Label(text="후판 계산기", font_name=FONT, font_size=dp(28),
                       color=(0, 0, 0, 1), halign="left", valign="middle")
         title.bind(size=lambda *_: setattr(title, "text_size", title.size))
@@ -130,7 +130,7 @@ class SlabApp(App):
         row_total.add_widget(Label(size_hint=(1,1)))
         root.add_widget(row_total)
 
-        # 지시길이(각 4자리) + 복사 버튼(간격 고정)
+        # 지시길이(4자리) + 복사 버튼(간격 고정 영역)
         grid = GridLayout(cols=3, size_hint=(1, None), height=dp(32*3+8*2),
                           row_default_height=dp(32), row_force_default=True, spacing=dp(8))
 
@@ -140,10 +140,12 @@ class SlabApp(App):
             lab.bind(size=lambda *_: setattr(lab, "text_size", lab.size))
             ti = DigitInput(max_len=4, allow_float=True, size_hint=(None,1), width=dp(100))
             grid.add_widget(lab); grid.add_widget(ti)
+
             if not with_btns:
                 grid.add_widget(Label())
                 return ti, None, None
-            # 버튼 구역 폭 고정(버튼 2개 + 간격 8)
+
+            # 버튼 2개 + 간격 8px을 포함한 고정 폭
             btn_zone = BoxLayout(orientation="horizontal", size_hint=(None,1),
                                  width=dp(60*2 + 8), spacing=dp(8))
             b1 = RoundedButton(text="← 1번", bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1],
@@ -169,7 +171,7 @@ class SlabApp(App):
         btn_calc.bind(on_release=lambda *_: self.calculate())
         root.add_widget(btn_calc)
 
-        # ── 에러/안내 메시지 바(아이콘 + 텍스트) ─────────────────────
+        # ── 에러/안내 메시지 바 (아이콘 + 텍스트) ──────────────────
         self.msg_bar = BoxLayout(orientation="horizontal", size_hint=(1,None),
                                  height=dp(0), opacity=0, padding=[dp(10), dp(6)], spacing=dp(8))
         with self.msg_bar.canvas.before:
@@ -238,9 +240,9 @@ class SlabApp(App):
         self.result_label.text_size = (self.result_label.width - dp(12), None)
         self.result_label.height = self.result_label.texture_size[1] + dp(12)
 
-    # ── 계산 ───────────────────────────────────────────────────────
+    # ── 계산 ──────────────────────────────────────────────────────
     def calculate(self, *_):
-        self._set_msg("")  # 에러바 초기화
+        self._set_msg("")  # 메시지바 초기화
 
         slab = _num_or_none(self.in_total.text)
         p1, p2, p3 = map(_num_or_none, [self.in_p1.text, self.in_p2.text, self.in_p3.text])
@@ -299,7 +301,7 @@ class SlabApp(App):
 
         self.result_label.text = "\n".join(lines)
 
-    # ── 설정(임시) ────────────────────────────────────────────────
+    # ── 설정(임시) ───────────────────────────────────────────────
     def open_settings(self, *_):
         mv = ModalView(size_hint=(.9,.4))
         box = BoxLayout(orientation="vertical", padding=dp(14), spacing=dp(8))
@@ -308,8 +310,7 @@ class SlabApp(App):
                               size_hint=(1,None), height=dp(40))
         close.bind(on_release=lambda *_: mv.dismiss())
         box.add_widget(close)
-        mv.add_widget(box)
-        mv.open()
+        mv.add_widget(box); mv.open()
 
 if __name__ == "__main__":
     SlabApp().run()
