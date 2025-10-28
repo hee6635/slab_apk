@@ -7,14 +7,13 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.scrollview import ScrollView
-from kivy.uix.image import Image
 from kivy.core.window import Window
 from kivy.uix.modalview import ModalView
 from kivy.properties import NumericProperty, ListProperty, BooleanProperty
 from kivy.graphics import Color, RoundedRectangle
-from kivy.uix.button import Button
+from kivy.uix.behaviors import ButtonBehavior  # ★ 추가
 
-FONT = "NanumGothic"  # 루트에 NanumGothic.ttf 존재
+FONT = "NanumGothic"
 
 def _num_or_none(s):
     try:
@@ -28,34 +27,29 @@ def _num_or_none(s):
 def round_half_up(n):
     return int(float(n) + 0.5)
 
-# ===== 둥근 버튼 (Button 기반: 텍스트 미표시/터치 충돌 방지) =====
-class RoundedButton(Button):
+# 둥근 버튼 (Label + ButtonBehavior)
+class RoundedButton(ButtonBehavior, Label):  # ★ 변경
     radius = NumericProperty(dp(8))
     bg_color = ListProperty([0.23, 0.53, 0.23, 1])
     fg_color = ListProperty([1, 1, 1, 1])
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.background_normal = ""   # Kivy 기본 배경 제거
-        self.background_down = ""
-        self.color = tuple(self.fg_color)
         self.font_name = FONT
+        self.color = self.fg_color
         self.halign = "center"
         self.valign = "middle"
-        self.text_size = (None, None)
+        self.bind(size=lambda *_: setattr(self, "text_size", self.size))
         with self.canvas.before:
             self._c = Color(*self.bg_color)
             self._r = RoundedRectangle(pos=self.pos, size=self.size,
                                        radius=[(self.radius, self.radius)]*4)
-        self.bind(pos=self._sync_bg, size=self._sync_bg, bg_color=self._recolor)
+        self.bind(pos=self._sync_bg, size=self._sync_bg)
 
     def _sync_bg(self, *a):
         self._r.pos, self._r.size = self.pos, self.size
 
-    def _recolor(self, *a):
-        self._c.rgba = self.bg_color
-
-# ===== 숫자 입력 =====
+# 숫자 입력
 class DigitInput(TextInput):
     max_len = NumericProperty(3)
     allow_float = BooleanProperty(False)
@@ -66,8 +60,7 @@ class DigitInput(TextInput):
         self.halign = "center"
         self.font_name = FONT
         self.font_size = dp(16)
-        self.height = dp(32)
-        self.size_hint_y = None
+        self.height = dp(32)  # 입력창 높이 축소
         self.background_normal = ""
         self.background_active = ""
         self.cursor_width = dp(2)
@@ -95,123 +88,97 @@ class SlabApp(App):
 
         root = BoxLayout(orientation="vertical", padding=[dp(12), dp(8)], spacing=dp(8))
 
-        # ── 상단줄: 우측 상단 '설정' 버튼만 배치 ──
-        header = BoxLayout(orientation="horizontal", size_hint=(1, None), height=dp(44))
-        header.add_widget(Label(size_hint=(1, 1)))  # 좌측 여백(푸시)
-        self.btn_settings = RoundedButton(
-            text="설정", size_hint=(None, 1), width=dp(68),
-            bg_color=[0.27, 0.27, 0.27, 1], fg_color=[1, 1, 1, 1]
-        )
-        self.btn_settings.bind(on_release=self.open_settings)
-        header.add_widget(self.btn_settings)
-        root.add_widget(header)
-
-        # ── 제목: 중앙 정렬, 고정 ──
+        # 제목 + 설정
         title = Label(text="후판 계산기", font_name=FONT, font_size=dp(28),
-                      color=(0, 0, 0, 1), size_hint=(1, None), height=dp(40),
-                      halign="center", valign="middle")
+                      color=(0, 0, 0, 1), halign="left", valign="middle")
         title.bind(size=lambda *_: setattr(title, "text_size", title.size))
-        root.add_widget(title)
+        top = BoxLayout(size_hint=(1, None), height=dp(44))
+        top.add_widget(title)
 
-        # ── 강번 입력 줄 ──
+        btn_settings = RoundedButton(text="설정", size_hint=(None, 1), width=dp(68),
+                                     bg_color=[0.27, 0.27, 0.27, 1],
+                                     fg_color=[1, 1, 1, 1])
+        btn_settings.bind(on_release=lambda *_: self.open_settings())  # ★ 변경
+        top.add_widget(btn_settings)
+        root.add_widget(top)
+
+        # 강번 입력
         row_code = BoxLayout(orientation="horizontal", size_hint=(1, None),
                              height=dp(32), spacing=dp(6))
-        def _lab(txt, w):
-            l = Label(text=txt, font_name=FONT, color=(0,0,0,1),
-                      size_hint=(None,1), width=w, halign="right", valign="middle")
-            l.bind(size=lambda *_: setattr(l, "text_size", l.size))
-            return l
-
-        row_code.add_widget(_lab("강번 입력:", dp(80)))
+        row_code.add_widget(Label(text="강번 입력:", font_name=FONT, color=(0,0,0,1),
+                                  size_hint=(None,1), width=dp(80), halign="right", valign="middle"))
         row_code.add_widget(Label(text=self.prefix, font_name=FONT, color=(0,0,0,1),
                                   size_hint=(None,1), width=dp(50)))
-        self.in_code_front = DigitInput(max_len=3, allow_float=False,
-                                        size_hint=(None,1), width=dp(60))
+        self.in_code_front = DigitInput(max_len=3, allow_float=False, size_hint=(None,1), width=dp(60))
         self.in_code_front.bind(text=self._auto_move_back)
         row_code.add_widget(self.in_code_front)
-
-        dash = Label(text="-0", font_name=FONT, color=(0,0,0,1),
-                     size_hint=(None,1), width=dp(26), halign="center", valign="middle")
-        dash.bind(size=lambda *_: setattr(dash, "text_size", dash.size))
-        row_code.add_widget(dash)
-
-        self.in_code_back = DigitInput(max_len=1, allow_float=False,
-                                       size_hint=(None,1), width=dp(40))
+        row_code.add_widget(Label(text="-0", font_name=FONT, color=(0,0,0,1),
+                                  size_hint=(None,1), width=dp(26)))
+        self.in_code_back = DigitInput(max_len=1, allow_float=False, size_hint=(None,1), width=dp(40))
         row_code.add_widget(self.in_code_back)
         root.add_widget(row_code)
 
-        # ── 실제 Slab 길이 (5자리 제한) ──
+        # Slab 길이 입력 (5자리 제한)
         row_total = BoxLayout(orientation="horizontal", size_hint=(1, None),
                               height=dp(32), spacing=dp(6))
-        row_total.add_widget(_lab("실제 Slab 길이:", dp(110)))
-        self.in_total = DigitInput(max_len=5, allow_float=True,
-                                   size_hint=(None,1), width=dp(130))
+        row_total.add_widget(Label(text="실제 Slab 길이:", font_name=FONT, color=(0,0,0,1),
+                                   size_hint=(None,1), width=dp(110), halign="right", valign="middle"))
+        self.in_total = DigitInput(max_len=5, allow_float=True, size_hint=(None,1), width=dp(130))
         row_total.add_widget(self.in_total)
-        row_total.add_widget(Label(size_hint=(1,1)))  # 우측 여백
+        row_total.add_widget(Label(size_hint=(1,1)))
         root.add_widget(row_total)
 
-        # ── 지시길이 1~3 (4자리 제한) + 복사 버튼(간격 고정) ──
-        grid = GridLayout(cols=5, size_hint=(1, None),
-                          row_default_height=dp(32), row_force_default=True,
-                          spacing=dp(8))
-        # 고정 폭 컬럼: [라벨][입력][버튼][버튼][스페이서]
-        fixed_btn_w = dp(64)
+        # 지시길이 (4자리 제한)
+        grid = GridLayout(cols=4, size_hint=(1, None), height=dp(32*3+8*2),
+                          row_default_height=dp(32), row_force_default=True, spacing=dp(8))
 
-        # 1번
-        grid.add_widget(_lab("1번 지시길이:", dp(110)))
-        self.in_p1 = DigitInput(max_len=4, allow_float=True,
-                                size_hint=(None,1), width=dp(100))
+        self.in_p1 = DigitInput(max_len=4, allow_float=True, size_hint=(None,1), width=dp(100))
+        self.in_p2 = DigitInput(max_len=4, allow_float=True, size_hint=(None,1), width=dp(100))
+        self.in_p3 = DigitInput(max_len=4, allow_float=True, size_hint=(None,1), width=dp(100))
+
+        grid.add_widget(Label(text="1번 지시길이:", font_name=FONT, color=(0,0,0,1),
+                              size_hint=(None,1), width=dp(110), halign="right", valign="middle"))
         grid.add_widget(self.in_p1)
-        grid.add_widget(Label(size_hint=(None,1), width=fixed_btn_w))  # 자리지킴
-        grid.add_widget(Label(size_hint=(None,1), width=fixed_btn_w))  # 자리지킴
-        grid.add_widget(Label())  # 행 스페이서
+        grid.add_widget(Label()); grid.add_widget(Label())
 
-        # 2번
-        grid.add_widget(_lab("2번 지시길이:", dp(110)))
-        self.in_p2 = DigitInput(max_len=4, allow_float=True,
-                                size_hint=(None,1), width=dp(100))
+        grid.add_widget(Label(text="2번 지시길이:", font_name=FONT, color=(0,0,0,1),
+                              size_hint=(None,1), width=dp(110), halign="right", valign="middle"))
         grid.add_widget(self.in_p2)
-        b21 = RoundedButton(text="← 1번", size_hint=(None,1), width=fixed_btn_w,
-                            bg_color=[0.85,0.85,0.85,1], fg_color=[0,0,0,1])
-        b21.bind(on_release=lambda *_: self._copy(self.in_p1, self.in_p2))
+        b21 = RoundedButton(text="← 1번", bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1],
+                            size_hint=(None,1), width=dp(60))
+        b21.bind(on_release=lambda *_: self._copy(self.in_p1, self.in_p2))  # ★ 변경
         grid.add_widget(b21)
-        grid.add_widget(Label(size_hint=(None,1), width=fixed_btn_w))  # 오른쪽 빈칸 고정
         grid.add_widget(Label())
 
-        # 3번
-        grid.add_widget(_lab("3번 지시길이:", dp(110)))
-        self.in_p3 = DigitInput(max_len=4, allow_float=True,
-                                size_hint=(None,1), width=dp(100))
+        grid.add_widget(Label(text="3번 지시길이:", font_name=FONT, color=(0,0,0,1),
+                              size_hint=(None,1), width=dp(110), halign="right", valign="middle"))
         grid.add_widget(self.in_p3)
-        b31 = RoundedButton(text="← 1번", size_hint=(None,1), width=fixed_btn_w,
-                            bg_color=[0.85,0.85,0.85,1], fg_color=[0,0,0,1])
-        b31.bind(on_release=lambda *_: self._copy(self.in_p1, self.in_p3))
+        b31 = RoundedButton(text="← 1번", bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1],
+                            size_hint=(None,1), width=dp(60))
+        b31.bind(on_release=lambda *_: self._copy(self.in_p1, self.in_p3))  # ★ 변경
         grid.add_widget(b31)
-        b32 = RoundedButton(text="← 2번", size_hint=(None,1), width=fixed_btn_w,
-                            bg_color=[0.85,0.85,0.85,1], fg_color=[0,0,0,1])
-        b32.bind(on_release=lambda *_: self._copy(self.in_p2, self.in_p3))
+        b32 = RoundedButton(text="← 2번", bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1],
+                            size_hint=(None,1), width=dp(60))
+        b32.bind(on_release=lambda *_: self._copy(self.in_p2, self.in_p3))  # ★ 변경
         grid.add_widget(b32)
-        grid.add_widget(Label())
         root.add_widget(grid)
 
-        # ── 계산 버튼(푸른 초록, 둥근, 풀폭) ──
-        btn_calc = RoundedButton(text="계산하기", size_hint=(1, None), height=dp(44),
-                                 bg_color=[0.23, 0.53, 0.23, 1], fg_color=[1,1,1,1],
-                                 radius=dp(10))
-        btn_calc.bind(on_release=self.calculate)
+        # 계산 버튼
+        btn_calc = RoundedButton(text="계산하기", bg_color=[0.23, 0.53, 0.23, 1],
+                                 fg_color=[1,1,1,1], size_hint=(1, None),
+                                 height=dp(44), radius=dp(10))
+        btn_calc.bind(on_release=lambda *_: self.calculate())  # ★ 변경
         root.add_widget(btn_calc)
 
-        # ── 결과 영역(흰 배경 + 둥근 모서리 + 스크롤) ──
+        # 결과 영역
         wrapper = BoxLayout(orientation="vertical")
         self.result_label = Label(text="", font_name=FONT, color=(0,0,0,1),
                                   size_hint=(1, None), halign="left", valign="top")
         self.result_label.bind(texture_size=lambda *_: self._resize_result())
-
         sv = ScrollView(size_hint=(1, 1))
         with self.result_label.canvas.before:
             Color(1,1,1,1)
-            self._bg_rect = RoundedRectangle(size=self.result_label.size,
-                                             pos=self.result_label.pos,
+            self._bg_rect = RoundedRectangle(size=self.result_label.size, pos=self.result_label.pos,
                                              radius=[(dp(6), dp(6))]*4)
         self.result_label.bind(size=self._bg_follow, pos=self._bg_follow)
         sv.add_widget(self.result_label)
@@ -226,7 +193,6 @@ class SlabApp(App):
 
         return root
 
-    # ===== helpers =====
     def _auto_move_back(self, instance, value):
         if len(value) >= 3:
             self.in_code_back.focus = True
@@ -241,82 +207,50 @@ class SlabApp(App):
         self.result_label.text_size = (self.result_label.width - dp(12), None)
         self.result_label.height = self.result_label.texture_size[1] + dp(12)
 
-    # ===== 계산 =====
     def calculate(self, *_):
         slab = _num_or_none(self.in_total.text)
         p1, p2, p3 = map(_num_or_none, [self.in_p1.text, self.in_p2.text, self.in_p3.text])
-
         if slab is None or slab <= 0:
-            self._set_error("실제 Slab 길이를 올바르게 입력하세요.")
+            self.result_label.text = "⚠️ 실제 Slab 길이를 올바르게 입력하세요."
             return
-        guides = [v for v in (p1, p2, p3) if v]
+        guides = [v for v in (p1,p2,p3) if v]
         if len(guides) < 2:
-            self._set_error("최소 2개 이상의 지시길이를 입력하세요.")
+            self.result_label.text = "⚠️ 최소 2개 이상의 지시길이를 입력하세요."
             return
-
         loss = 15.0
-        total_loss = loss * (len(guides) - 1)
-        remain = slab - (sum(guides) + total_loss)
-        add_each = remain / len(guides)
-        real = [g + add_each for g in guides]
-
-        centers = []
-        acc = 0.0
+        total_loss = loss*(len(guides)-1)
+        remain = slab - (sum(guides)+total_loss)
+        add_each = remain/len(guides)
+        real = [g+add_each for g in guides]
+        centers = []; acc=0
         for l in real[:-1]:
-            acc += l + (loss/2)
-            centers.append(acc)
-            acc += (loss/2)
-
-        mm = " mm"
-        cf = (self.in_code_front.text or "").strip()
-        cb = (self.in_code_back.text or "").strip()
-
-        lines = []
-        if cf and cb:
-            lines.append(f"▶ 강번: {self.prefix}{cf}-0{cb}\n")
+            acc += l+(loss/2); centers.append(acc); acc += (loss/2)
+        mm=" mm"; cf=self.in_code_front.text.strip(); cb=self.in_code_back.text.strip()
+        lines=[]
+        if cf and cb: lines.append(f"▶ 강번: {self.prefix}{cf}-0{cb}\n")
         lines.append(f"▶ Slab 실길이: {slab:,.1f}{mm}")
-        for i, g in enumerate(guides, 1):
-            lines.append(f"▶ {i}번 지시길이: {g:,.1f}{mm}")
+        for i,g in enumerate(guides,1): lines.append(f"▶ {i}번 지시길이: {g:,.1f}{mm}")
         lines.append(f"▶ 절단 손실: {loss}{mm} × {len(guides)-1} = {total_loss}{mm}")
         lines.append(f"▶ 전체 여유길이: {remain:,.1f}{mm} → 각 +{add_each:,.1f}{mm}\n")
-
         lines.append("▶ 각 Slab별 실제 절단 길이:")
-        for i, r in enumerate(real, 1):
-            lines.append(f"   {i}번: {r:,.1f}{mm}")
-
+        for i,r in enumerate(real,1): lines.append(f"   {i}번: {r:,.1f}{mm}")
         lines.append(f"\n▶ 절단센터 위치(mm): {[round_half_up(c) for c in centers]}\n")
+        visual="H"
+        for i,r in enumerate(real,1):
+            mark=round_half_up(r+loss/2); visual+=f"-{i}번({mark})-"
+        visual+="T"
+        lines.append("▶ 시각화 (실제 마킹 위치):"); lines.append(visual)
+        self.result_label.text="\n".join(lines)
 
-        visual = "H"
-        for i, r in enumerate(real, 1):
-            mark = round_half_up(r + loss/2)
-            visual += f"-{i}번({mark})-"
-        visual += "T"
-        lines.append("▶ 시각화 (실제 마킹 위치):")
-        lines.append(visual)
-
-        self.result_label.text = "\n".join(lines)
-
-    # 오류 표시(이모지 + 텍스트, warning.png 있으면 아이콘 추가)
-    def _set_error(self, msg):
-        icon_path = "warning.png"
-        if os.path.exists(icon_path):
-            self.result_label.text = f"  ☒ {msg}"
-        else:
-            self.result_label.text = f"⚠ {msg}"
-
-    # ===== 설정 팝업 =====
     def open_settings(self, *_):
-        mv = ModalView(size_hint=(.9,.4), auto_dismiss=True)
-        box = BoxLayout(orientation="vertical", padding=dp(14), spacing=dp(8))
-        info = Label(text="설정은 추후 추가 예정입니다.", font_name=FONT, color=(0,0,0,1),
-                     halign="center", valign="middle", size_hint=(1,1))
-        info.bind(size=lambda *_: setattr(info, "text_size", info.size))
-        close = RoundedButton(text="닫기", size_hint=(1, None), height=dp(40),
-                              bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1])
-        close.bind(on_release=lambda *_: mv.dismiss())
-        box.add_widget(info); box.add_widget(close)
-        mv.add_widget(box)
-        mv.open()
+        mv=ModalView(size_hint=(.9,.4))
+        box=BoxLayout(orientation="vertical",padding=dp(14),spacing=dp(8))
+        box.add_widget(Label(text="설정은 추후 추가 예정입니다.",font_name=FONT,color=(0,0,0,1)))
+        close=RoundedButton(text="닫기",bg_color=[0.8,0.8,0.8,1],fg_color=[0,0,0,1],
+                            size_hint=(1,None),height=dp(40))
+        close.bind(on_release=lambda *_: mv.dismiss())  # ★ 변경
+        box.add_widget(close)
+        mv.add_widget(box); mv.open()
 
 if __name__ == "__main__":
     SlabApp().run()
