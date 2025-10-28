@@ -1,7 +1,14 @@
-# 버전 3 - 상단 여백 축소 + 입력칸 60% 폭 적용 (2025-10-28)
+# 버전 5 - UI 미세조정 & 결과 편집 가능(TextInput) 2025-10-28
+# 변경점:
+# - 강번 첫 입력칸(in_code_front) 폭 확대: dp(84)
+# - 입력 칸 가로폭: 전체 대비 약 60% 유지
+# - 라벨↔입력칸 간격(라벨 width) 축소 유지(= 50% 축소 효과)
+# - 결과 영역: TextInput로 복귀(복사/편집 가능)
+# - 출력 섹션명: "절단 후 예상 길이", "시각화 (절단 마킹 포인트)"
+# - "절단센터 위치" 출력 제거
 
 # -*- coding: utf-8 -*-
-import os, sys, traceback
+import os
 from kivy.app import App
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
@@ -29,25 +36,7 @@ def _num_or_none(s):
 def round_half_up(n):
     return int(float(n) + 0.5)
 
-def _install_global_crash_hook(user_data_dir: str):
-    def _write(path, text):
-        try:
-            os.makedirs(os.path.dirname(path), exist_ok=True)
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(text)
-        except Exception:
-            pass
-
-    def _hook(exc_type, exc, tb):
-        txt = "Traceback (most recent call last):\n" + "".join(traceback.format_tb(tb))
-        txt += f"{exc_type.__name__}: {exc}\n"
-        if user_data_dir:
-            _write(os.path.join(user_data_dir, "last_crash.txt"), txt)
-        _write("/storage/emulated/0/.kivy/last_crash.txt", txt)
-        sys.__excepthook__(exc_type, exc, tb)
-    sys.excepthook = _hook
-
-# 라벨 기반 둥근 버튼
+# 둥근 버튼 (라벨 + 버튼)
 class RoundedButton(ButtonBehavior, Label):
     radius = NumericProperty(dp(8))
     bg_color = ListProperty([0.23, 0.53, 0.23, 1])
@@ -81,7 +70,7 @@ class DigitInput(TextInput):
         super().__init__(**kwargs)
         self.multiline = False
         self.halign = "left"
-        self.padding = (dp(8), dp(6))     # 내부 여백 (좌/상)
+        self.padding = (dp(8), dp(6))
         self.font_name = FONT
         self.font_size = dp(16)
         self.height = dp(30)
@@ -103,46 +92,24 @@ class DigitInput(TextInput):
             filtered = filtered[:remain]
         return super().insert_text(filtered, from_undo=from_undo)
 
-# 결과 표시/복사용 텍스트 박스(읽기전용, 전체 선택 가능)
-class CopyBox(TextInput):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.font_name = FONT
-        self.font_size = dp(15)
-        self.readonly = True
-        self.cursor_blink = False
-        self.halign = "left"
-        self.valign = "top"
-        self.background_normal = ""
-        self.background_active = ""
-        self.foreground_color = (0,0,0,1)
-        self.size_hint = (1, None)
-        self.height = dp(260)
-        self.padding = (dp(10), dp(8))
-        self.text = ""
-        # 터치 시 전체 선택
-        self.select_on_focus = True
-
 class SlabApp(App):
     prefix = "SG94"
 
     def build(self):
-        _install_global_crash_hook(self.user_data_dir)
-
         Window.clearcolor = (0.93, 0.93, 0.93, 1)
-        # 상단 여백 ↓
-        root = BoxLayout(orientation="vertical", padding=[dp(12), dp(2), dp(12), dp(8)], spacing=dp(8))
 
-        # 상단바(설정 버튼)
-        topbar = BoxLayout(size_hint=(1, None), height=dp(32))
+        root = BoxLayout(orientation="vertical", padding=[dp(12), dp(8)], spacing=dp(8))
+
+        # 상단 설정 버튼 (우상단)
+        topbar = BoxLayout(size_hint=(1, None), height=dp(40), padding=[0, 0, 0, 0], spacing=0)
         topbar.add_widget(Widget())
-        btn_settings = RoundedButton(text="설정", size_hint=(None, 1), width=dp(68),
+        btn_settings = RoundedButton(text="설정", size_hint=(None, 1), width=dp(72),
                                      bg_color=[0.27, 0.27, 0.27, 1], fg_color=[1, 1, 1, 1])
         btn_settings.bind(on_release=lambda *_: self.open_settings())
         topbar.add_widget(btn_settings)
         root.add_widget(topbar)
 
-        # 제목 (센터)
+        # 제목 (가운데 정렬)
         title_row = BoxLayout(size_hint=(1, None), height=dp(44))
         title = Label(text="후판 계산기", font_name=FONT, font_size=dp(28),
                       color=(0, 0, 0, 1), halign="center", valign="middle")
@@ -150,79 +117,77 @@ class SlabApp(App):
         title_row.add_widget(title)
         root.add_widget(title_row)
 
-        # ===== 입력부 =====
-        label_w = dp(112)        # 라벨 고정폭
-        # 기존 폭의 60%로 축소 (기존: 64, 44, 128, 104)
-        w_code_front = dp(64) * 0.6   # ≈38
-        w_code_back  = dp(44) * 0.6   # ≈26
-        w_total      = dp(128) * 0.6  # ≈77
-        w_part       = dp(104) * 0.6  # ≈62
+        # 공통: 라벨 폭(간격 축소용)
+        LABEL_W = dp(90)  # 이전 대비 50% 정도 축소 효과
 
-        # 강번 입력
+        # 강번 입력 행
         row_code = BoxLayout(orientation="horizontal", size_hint=(1, None),
-                             height=dp(30), spacing=dp(4))
+                             height=dp(30), spacing=dp(6))
         row_code.add_widget(Label(text="강번 입력:", font_name=FONT, color=(0,0,0,1),
-                                  size_hint=(None,1), width=dp(82), halign="right", valign="middle"))
+                                  size_hint=(None,1), width=LABEL_W, halign="right", valign="middle"))
         row_code.add_widget(Label(text=self.prefix, font_name=FONT, color=(0,0,0,1),
-                                  size_hint=(None,1), width=dp(46), halign="left", valign="middle"))
-        self.in_code_front = DigitInput(max_len=3, allow_float=False, size_hint=(None,1), width=w_code_front)
+                                  size_hint=(None,1), width=dp(44)))
+        # 첫 입력칸 폭 확대
+        self.in_code_front = DigitInput(max_len=3, allow_float=False, size_hint=(None,1), width=dp(84))
         self.in_code_front.bind(text=self._auto_move_back)
         row_code.add_widget(self.in_code_front)
         row_code.add_widget(Label(text="-0", font_name=FONT, color=(0,0,0,1),
-                                  size_hint=(None,1), width=dp(22)))
-        self.in_code_back = DigitInput(max_len=1, allow_float=False, size_hint=(None,1), width=w_code_back)
+                                  size_hint=(None,1), width=dp(26)))
+        self.in_code_back = DigitInput(max_len=1, allow_float=False, size_hint=(None,1), width=dp(44))
         row_code.add_widget(self.in_code_back)
+        # 남는 공간 약간 유지
         row_code.add_widget(Widget())
         root.add_widget(row_code)
 
         # 실제 Slab 길이
         row_total = BoxLayout(orientation="horizontal", size_hint=(1, None),
-                              height=dp(30), spacing=dp(4))
+                              height=dp(30), spacing=dp(6))
         row_total.add_widget(Label(text="실제 Slab 길이:", font_name=FONT, color=(0,0,0,1),
-                                   size_hint=(None,1), width=label_w, halign="right", valign="middle"))
-        self.in_total = DigitInput(max_len=5, allow_float=True, size_hint=(None,1), width=w_total)
+                                   size_hint=(None,1), width=LABEL_W, halign="right", valign="middle"))
+        # 전체 대비 약 60% 폭
+        self.in_total = DigitInput(max_len=5, allow_float=True, size_hint=(None,1), width=dp(180))
         row_total.add_widget(self.in_total)
         row_total.add_widget(Widget())
         root.add_widget(row_total)
 
-        # 지시길이 + 복사버튼
+        # 지시길이들 + 복사 버튼
         grid = GridLayout(cols=4, size_hint=(1, None), height=dp(30*3+8*2),
                           row_default_height=dp(30), row_force_default=True, spacing=dp(8))
-        self.in_p1 = DigitInput(max_len=4, allow_float=True, size_hint=(None,1), width=w_part)
-        self.in_p2 = DigitInput(max_len=4, allow_float=True, size_hint=(None,1), width=w_part)
-        self.in_p3 = DigitInput(max_len=4, allow_float=True, size_hint=(None,1), width=w_part)
 
-        # 1번
+        self.in_p1 = DigitInput(max_len=4, allow_float=True, size_hint=(None,1), width=dp(160))
+        self.in_p2 = DigitInput(max_len=4, allow_float=True, size_hint=(None,1), width=dp(160))
+        self.in_p3 = DigitInput(max_len=4, allow_float=True, size_hint=(None,1), width=dp(160))
+
         grid.add_widget(Label(text="1번 지시길이:", font_name=FONT, color=(0,0,0,1),
-                              size_hint=(None,1), width=label_w, halign="right", valign="middle"))
+                              size_hint=(None,1), width=LABEL_W, halign="right", valign="middle"))
         grid.add_widget(self.in_p1)
-        grid.add_widget(Label()); grid.add_widget(Label())
+        grid.add_widget(Label())
+        grid.add_widget(Label())
 
-        # 2번
         grid.add_widget(Label(text="2번 지시길이:", font_name=FONT, color=(0,0,0,1),
-                              size_hint=(None,1), width=label_w, halign="right", valign="middle"))
+                              size_hint=(None,1), width=LABEL_W, halign="right", valign="middle"))
         grid.add_widget(self.in_p2)
         b21 = RoundedButton(text="← 1번", bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1],
-                            size_hint=(None,1), width=dp(60))
+                            size_hint=(None,1), width=dp(64))
         b21.bind(on_release=lambda *_: self._copy(self.in_p1, self.in_p2))
         grid.add_widget(b21)
         grid.add_widget(Label())
 
-        # 3번
         grid.add_widget(Label(text="3번 지시길이:", font_name=FONT, color=(0,0,0,1),
-                              size_hint=(None,1), width=label_w, halign="right", valign="middle"))
+                              size_hint=(None,1), width=LABEL_W, halign="right", valign="middle"))
         grid.add_widget(self.in_p3)
         btn_row = BoxLayout(orientation="horizontal", spacing=dp(8),
-                            size_hint=(None,1), width=dp(60*2 + 8))
+                            size_hint=(None,1), width=dp(64*2 + 8))
         b31 = RoundedButton(text="← 1번", bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1],
-                            size_hint=(None,1), width=dp(60))
+                            size_hint=(None,1), width=dp(64))
         b32 = RoundedButton(text="← 2번", bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1],
-                            size_hint=(None,1), width=dp(60))
+                            size_hint=(None,1), width=dp(64))
         b31.bind(on_release=lambda *_: self._copy(self.in_p1, self.in_p3))
         b32.bind(on_release=lambda *_: self._copy(self.in_p2, self.in_p3))
         btn_row.add_widget(b31); btn_row.add_widget(b32)
         grid.add_widget(btn_row)
         grid.add_widget(Label())
+
         root.add_widget(grid)
 
         # 계산 버튼
@@ -232,19 +197,41 @@ class SlabApp(App):
         btn_calc.bind(on_release=lambda *_: self.calculate())
         root.add_widget(btn_calc)
 
-        # 결과(복사 가능)
-        self.result_box = CopyBox()
-        root.add_widget(self.result_box)
+        # 결과 영역: TextInput(복사/편집 가능, 스크롤 없이 고정 높이)
+        wrapper = BoxLayout(orientation="vertical", spacing=dp(6))
+        # 결과 박스(라운드 배경)
+        self.result_box = BoxLayout(size_hint=(1, None), height=dp(300), padding=dp(10))
+        with self.result_box.canvas.before:
+            Color(1,1,1,1)
+            self._res_bg = RoundedRectangle(size=self.result_box.size, pos=self.result_box.pos,
+                                            radius=[(dp(6), dp(6))]*4)
+        self.result_box.bind(size=self._resbg_follow, pos=self._resbg_follow)
 
-        # 버전 태그
-        ver = Label(text="버전 3", font_name=FONT, color=(0.4,0.4,0.4,1),
-                    halign="right", valign="middle", size_hint=(1, None), height=dp(20))
-        ver.bind(size=lambda *_: setattr(ver, "text_size", ver.size))
-        root.add_widget(ver)
+        self.result_input = TextInput(text="", font_name=FONT, font_size=dp(15),
+                                      foreground_color=(0,0,0,1),
+                                      background_color=(0,0,0,0),  # 투명(상자 배경만 사용)
+                                      cursor_width=dp(2),
+                                      readonly=False,  # 편집 가능(복사/붙여넣기 편리)
+                                      multiline=True, size_hint=(1,1))
+        # 좌측 정렬 느낌을 위해 padding 유지
+        self.result_input.padding = (dp(6), dp(6))
+        self.result_box.add_widget(self.result_input)
+        wrapper.add_widget(self.result_box)
+
+        # 하단 버전 태그
+        version = Label(text="버전 5", font_name=FONT, color=(0.4,0.4,0.4,1),
+                        halign="right", valign="middle", size_hint=(1, None), height=dp(20))
+        version.bind(size=lambda *_: setattr(version, "text_size", version.size))
+        wrapper.add_widget(version)
+
+        root.add_widget(wrapper)
 
         return root
 
     # helpers
+    def _resbg_follow(self, *_):
+        self._res_bg.pos, self._res_bg.size = self.result_box.pos, self.result_box.size
+
     def _auto_move_back(self, instance, value):
         if len(value) >= 3:
             self.in_code_back.focus = True
@@ -259,18 +246,19 @@ class SlabApp(App):
             p1, p2, p3 = map(_num_or_none, [self.in_p1.text, self.in_p2.text, self.in_p3.text])
 
             if slab is None or slab <= 0:
-                self.result_box.text = "실제 Slab 길이를 올바르게 입력하세요."
+                # TextInput은 이미지 아이콘을 못 그리므로 텍스트 경고로 대체
+                self.result_input.text = "⚠️ 실제 Slab 길이를 올바르게 입력하세요."
                 return
 
             guides = [v for v in (p1, p2, p3) if v is not None and v > 0]
             if len(guides) < 2:
-                self.result_box.text = "최소 2개 이상의 지시길이를 입력하세요."
+                self.result_input.text = "⚠️ 최소 2개 이상의 지시길이를 입력하세요."
                 return
 
             loss = 15.0
             total_loss = loss * (len(guides) - 1)
             remain = slab - (sum(guides) + total_loss)
-            add_each = remain / len(guides) if guides else 0.0
+            add_each = remain / len(guides)
             real = [g + add_each for g in guides]
 
             mm = " mm"
@@ -285,10 +273,12 @@ class SlabApp(App):
             lines.append(f"▶ 절단 손실: {loss}{mm} × {len(guides)-1} = {total_loss}{mm}")
             lines.append(f"▶ 전체 여유길이: {remain:,.1f}{mm} → 각 +{add_each:,.1f}{mm}\n")
 
+            # 절단 후 예상 길이
             lines.append("▶ 절단 후 예상 길이:")
             for i, r in enumerate(real, 1):
                 lines.append(f"   {i}번: {r:,.1f}{mm}")
 
+            # 시각화 (절단 마킹 포인트) — 절단센터 위치는 출력하지 않음
             visual = "H"
             for i, r in enumerate(real, 1):
                 mark = round_half_up(r + loss/2)
@@ -297,11 +287,10 @@ class SlabApp(App):
             lines.append("\n▶ 시각화 (절단 마킹 포인트):")
             lines.append(visual)
 
-            self.result_box.text = "\n".join(lines)
+            self.result_input.text = "\n".join(lines)
 
         except Exception as e:
-            self.result_box.text = f"오류: {e}"
-            raise
+            self.result_input.text = f"⚠️ 오류: {e}"
 
     # 설정
     def open_settings(self, *_):
