@@ -1,4 +1,4 @@
-# 버전 12 - 상단 여백 고정(AnchorLayout + GridLayout minimum_height) / 기능은 v11과 동일
+# 버전 13 - 출력부 하단까지 확장 + 설정화면 타이틀 아래로 항목 정렬 (v12 기반 레이아웃 재구성)
 # 2025-10-28
 
 # -*- coding: utf-8 -*-
@@ -17,7 +17,6 @@ from kivy.uix.widget import Widget
 from kivy.uix.image import Image
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition
-from kivy.uix.anchorlayout import AnchorLayout
 
 SETTINGS_FILE = "settings.json"
 FONT = "NanumGothic"
@@ -106,11 +105,12 @@ class MainScreen(Screen):
         super().__init__(**kwargs)
         Window.clearcolor = (0.93, 0.93, 0.93, 1)
 
-        # 상단 고정: AnchorLayout(top) + inner(GridLayout cols=1, adaptive height)
-        anchor = AnchorLayout(anchor_y="top")
-        inner = GridLayout(cols=1, padding=[dp(12), dp(8)], spacing=dp(8),
-                           size_hint=(1, None))
-        inner.bind(minimum_height=inner.setter("height"))
+        # 전체는 세로박스: (상단 고정영역) + (출력부 확장) + (버전라벨)
+        root = BoxLayout(orientation="vertical", padding=[dp(12), dp(8)], spacing=dp(8))
+
+        # 상단 고정 영역(내용 높이만큼만) : GridLayout cols=1 + minimum_height 바인딩
+        top_section = GridLayout(cols=1, size_hint=(1, None), spacing=dp(8))
+        top_section.bind(minimum_height=top_section.setter("height"))
 
         # 상단바
         topbar = BoxLayout(size_hint=(1, None), height=dp(40))
@@ -119,7 +119,7 @@ class MainScreen(Screen):
                                      bg_color=[0.27,0.27,0.27,1], fg_color=[1,1,1,1])
         btn_settings.bind(on_release=lambda *_: self.manager.current_switch("settings"))
         topbar.add_widget(btn_settings)
-        inner.add_widget(topbar)
+        top_section.add_widget(topbar)
 
         # 타이틀
         title_row = BoxLayout(size_hint=(1, None), height=dp(44))
@@ -127,7 +127,7 @@ class MainScreen(Screen):
                       color=(0,0,0,1), halign="center", valign="middle")
         title.bind(size=lambda *_: setattr(title, "text_size", title.size))
         title_row.add_widget(title)
-        inner.add_widget(title_row)
+        top_section.add_widget(title_row)
 
         # 강번 입력
         row_code = BoxLayout(orientation="horizontal", size_hint=(1, None),
@@ -144,7 +144,7 @@ class MainScreen(Screen):
                                   size_hint=(None,1), width=dp(22)))
         self.in_code_back = DigitInput(max_len=1, allow_float=False, size_hint=(None,1), width=dp(40))
         row_code.add_widget(self.in_code_back)
-        inner.add_widget(row_code)
+        top_section.add_widget(row_code)
 
         # 실제 Slab 길이
         row_total = BoxLayout(orientation="horizontal", size_hint=(1, None),
@@ -153,7 +153,7 @@ class MainScreen(Screen):
                                    size_hint=(None,1), width=dp(104), halign="right", valign="middle"))
         self.in_total = DigitInput(max_len=5, allow_float=True, size_hint=(None,1), width=dp(124))
         row_total.add_widget(self.in_total); row_total.add_widget(Widget())
-        inner.add_widget(row_total)
+        top_section.add_widget(row_total)
 
         # 지시길이
         grid = GridLayout(cols=4, size_hint=(1, None), height=dp(30*3+8*2),
@@ -184,14 +184,14 @@ class MainScreen(Screen):
         b32.bind(on_release=lambda *_: self._copy(self.in_p2, self.in_p3))
         btn_row.add_widget(b31); btn_row.add_widget(b32)
         grid.add_widget(btn_row); grid.add_widget(Label())
-        inner.add_widget(grid)
+        top_section.add_widget(grid)
 
         # 계산 버튼
         btn_calc = RoundedButton(text="계산하기", bg_color=[0.23,0.53,0.23,1],
                                  fg_color=[1,1,1,1], size_hint=(1,None),
                                  height=dp(44), radius=dp(10))
         btn_calc.bind(on_release=lambda *_: self.calculate())
-        inner.add_widget(btn_calc)
+        top_section.add_widget(btn_calc)
 
         # 경고 바
         self.warn_bar = BoxLayout(orientation="horizontal", spacing=dp(6),
@@ -208,24 +208,29 @@ class MainScreen(Screen):
         self.warn_msg = Label(text="", font_name=FONT, color=(0,0,0,1), halign="left", valign="middle")
         self.warn_msg.bind(size=lambda *_: setattr(self.warn_msg, "text_size", self.warn_msg.size))
         self.warn_bar.add_widget(self.warn_icon); self.warn_bar.add_widget(self.warn_msg)
-        inner.add_widget(self.warn_bar)
+        top_section.add_widget(self.warn_bar)
 
-        # 결과(스크롤 제거, 고정)
-        self.out_box = TextInput(readonly=True, cursor_blink=False, size_hint=(1,None), height=dp(240),
-                                 font_name=FONT, font_size=dp(11), background_normal="", background_active="",
+        # 상단 고정영역을 root에 추가(내용 높이만큼만)
+        root.add_widget(top_section)
+
+        # ▼▼ 출력부: 남는 공간 100% 차지 ▼▼
+        self.out_box = TextInput(readonly=True, cursor_blink=False,
+                                 size_hint=(1, 1),  # 핵심: 세로 확장
+                                 font_name=FONT, font_size=dp(11),
+                                 background_normal="", background_active="",
                                  padding=(dp(8), dp(8)))
-        inner.add_widget(self.out_box)
+        root.add_widget(self.out_box)
 
         # 하단 버전
-        sig = Label(text="버전 12", font_name=FONT, color=(0.4,0.4,0.4,1),
+        sig = Label(text="버전 13", font_name=FONT, color=(0.4,0.4,0.4,1),
                     halign="right", valign="middle", size_hint=(1, None), height=dp(22))
         sig.bind(size=lambda *_: setattr(sig, "text_size", sig.size))
-        inner.add_widget(sig)
+        root.add_widget(sig)
 
-        anchor.add_widget(inner)
-        self.add_widget(anchor)
+        self.add_widget(root)
         self._apply_settings_from_file()
 
+    # helpers
     def _show_warn(self, msg):
         self.warn_msg.text = msg; self.warn_bar.height = dp(28); self.warn_bar.opacity = 1
     def _hide_warn(self):
@@ -296,10 +301,8 @@ class SettingsScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        anchor = AnchorLayout(anchor_y="top")
-        inner = GridLayout(cols=1, padding=[dp(12), dp(8)], spacing=dp(8),
-                           size_hint=(1, None))
-        inner.bind(minimum_height=inner.setter("height"))
+        # 전체는 세로박스: 상단바(저장) + 타이틀 + 3줄공백 + 항목들 + 아래여백 + 버전
+        root = BoxLayout(orientation="vertical", padding=[dp(12), dp(8)], spacing=dp(8))
 
         # 상단바(저장)
         topbar = BoxLayout(size_hint=(1, None), height=dp(40))
@@ -308,20 +311,24 @@ class SettingsScreen(Screen):
                                  bg_color=[0.27,0.27,0.27,1], fg_color=[1,1,1,1])
         btn_save.bind(on_release=lambda *_: self._save_and_back())
         topbar.add_widget(btn_save)
-        inner.add_widget(topbar)
+        root.add_widget(topbar)
 
-        # 타이틀 + 3줄 공백
+        # 타이틀
         title_row = BoxLayout(size_hint=(1, None), height=dp(44))
         title = Label(text="환경설정", font_name=FONT, font_size=dp(28),
                       color=(0,0,0,1), halign="center", valign="middle")
         title.bind(size=lambda *_: setattr(title, "text_size", title.size))
         title_row.add_widget(title)
-        inner.add_widget(title_row)
-        for _ in range(3):
-            inner.add_widget(Widget(size_hint=(1,None), height=dp(12)))
+        root.add_widget(title_row)
 
-        # 항목들
-        items = BoxLayout(orientation="vertical", spacing=dp(10), size_hint=(1,None))
+        # 3줄 공백
+        for _ in range(3):
+            root.add_widget(Widget(size_hint=(1,None), height=dp(12)))
+
+        # 항목 컨테이너(내용 높이만큼)
+        items = GridLayout(cols=1, size_hint=(1,None), spacing=dp(10))
+        items.bind(minimum_height=items.setter("height"))
+
         # 1) 접두어
         row1t = Label(text="1. 강번 접두어", font_name=FONT, color=(0,0,0,1),
                       size_hint=(1,None), height=dp(20), halign="left", valign="middle")
@@ -362,15 +369,16 @@ class SettingsScreen(Screen):
         row3.add_widget(lab_fs); row3.add_widget(self.in_font); row3.add_widget(Widget())
         items.add_widget(row3)
 
-        inner.add_widget(items)
+        root.add_widget(items)
 
-        sig = Label(text="버전 12", font_name=FONT, color=(0.4,0.4,0.4,1),
+        # 아래 남는 공간 밀어내기 + 버전
+        root.add_widget(Widget(size_hint=(1,1)))
+        sig = Label(text="버전 13", font_name=FONT, color=(0.4,0.4,0.4,1),
                     halign="right", valign="middle", size_hint=(1, None), height=dp(22))
         sig.bind(size=lambda *_: setattr(sig, "text_size", sig.size))
-        inner.add_widget(sig)
+        root.add_widget(sig)
 
-        anchor.add_widget(inner)
-        self.add_widget(anchor)
+        self.add_widget(root)
         self._load()
 
     def _load(self):
