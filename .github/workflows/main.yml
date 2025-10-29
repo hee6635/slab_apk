@@ -4,41 +4,46 @@ on:
   workflow_dispatch: {}
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   build-android:
-    name: Build for Android
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ① 이전 실행의 잘못된 캐시/경로 제거
-      - name: Clean previous buildozer caches
-        run: rm -rf .buildozer .buildozer_global
-
-      # ② Buildozer로 빌드 실행
-      - name: Build with Buildozer
-        id: buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
-        env:
-          USER: root
-          PIP_BREAK_SYSTEM_PACKAGES: "1"
-          BUILDOZER_ANDROID_NDK_VERSION: "25.2.9519653"
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          workdir: .
-          buildozer_version: stable
+          python-version: "3.11"
 
-      # ③ 권한 복구 (Post job cleanup 오류 방지)
-      - name: Fix workspace permissions
-        run: sudo chown -R $USER:$USER "${{ github.workspace }}"
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade buildozer python-for-android==2024.9.27 cython wheel
 
-      # ④ 빌드 결과물 업로드
-      - name: Upload APK artifact
+      # 🔥 핵심: 캐시 완전 삭제 (local + global). 이전 armv7/NDK 흔적 제거
+      - name: Clean buildozer caches (local & global)
+        run: |
+          rm -rf .buildozer
+          rm -rf $GITHUB_WORKSPACE/.buildozer_global
+          rm -rf $HOME/.buildozer
+
+      - name: Sanity check spec
+        run: |
+          echo "[android] section quick check:"
+          grep -E '^(android\.api|android\.minapi|android\.ndk_api|android\.archs)' buildozer.spec || true
+
+      - name: Build (verbose)
+        env:
+          P4A_LOG_LEVEL: "2"
+        run: |
+          buildozer --verbose android debug
+
+      - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: slab_apk-debug
-          path: ${{ steps.buildozer.outputs.filename }}
+          name: slabcalc-arm64
+          path: bin/*.apk
