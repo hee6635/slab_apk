@@ -1,78 +1,45 @@
-name: Build Android APK (Docker)
+name: Build Android APK
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
 
 jobs:
-  build:
+  build-android:
+    name: Build for Android
     runs-on: ubuntu-latest
-    timeout-minutes: 120
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Show runner disk space
-        run: df -h
+      # ① 이전 실행의 잘못된 캐시/경로 제거
+      - name: Clean previous buildozer caches
+        run: rm -rf .buildozer .buildozer_global
 
-      # ✅ 캐시/이전 산출물 완전 삭제 (섞임 방지)
-      - name: Clean previous Buildozer caches (VERY IMPORTANT)
-        run: |
-          rm -rf .buildozer .buildozer_global bin
-          mkdir -p logs
-
-      - name: Pull Buildozer Docker image
-        run: docker pull kivy/buildozer
-
-      # 🧱 Docker로 Buildozer 빌드(+콘솔 로그 파일 저장)
-      - name: Build APK with Buildozer (Docker)
-        id: build
+      # ② Buildozer로 빌드 실행
+      - name: Build with Buildozer
+        id: buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
         env:
-          BUILDOZER_WARN_ON_ROOT: "0"
-        run: |
-          set -e
-          # (선택) 폰트 등 리소스 체크 - 필요 없으면 삭제하세요
-          if [ ! -f NanumGothic.ttf ]; then
-            echo "⚠ NanumGothic.ttf not found (필요 없다면 무시)"
-          fi
+          USER: root
+          PIP_BREAK_SYSTEM_PACKAGES: "1"
+          BUILDOZER_ANDROID_NDK_VERSION: "25.2.9519653"
+        with:
+          workdir: .
+          buildozer_version: stable
 
-          docker run --rm \
-            -v "$PWD":/home/user/app \
-            -w /home/user/app \
-            kivy/buildozer \
-            /bin/bash -lc 'buildozer -v android debug' | tee logs/buildozer_console.log
+      # ③ 권한 복구 (Post job cleanup 오류 방지)
+      - name: Fix workspace permissions
+        run: sudo chown -R $USER:$USER "${{ github.workspace }}"
 
-      # 📦 로그/빌드 폴더 수집(실패해도 항상 수행)
-      - name: Collect extra logs (best-effort)
-        if: always()
-        run: |
-          set -x
-          mkdir -p logs
-          cp -r .buildozer logs/buildozer_folder || true
-          (cd logs && zip -r ../logs_artifact.zip .) || true
-
-      # ✅ 산출물(APK) 업로드
-      - name: Upload APK(s)
-        if: success()
+      # ④ 빌드 결과물 업로드
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: apk
-          path: |
-            bin/*.apk
-          if-no-files-found: warn
-          retention-days: 7
+          name: slab_apk-debug
+          path: ${{ steps.buildozer.outputs.filename }}
 
-      # 🗂️ 전체 로그 업로드(성공/실패 관계없이)
-      - name: Upload full logs (even on failure)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs
-          path: |
-            logs_artifact.zip
-            logs/buildozer_console.log
-          retention-days: 14
