@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# 버전 19 - 환경설정 정리(두 줄 구성) / 상단여백 조정 / 입력폰트16 / 입력칸 90% 축소 / mm여백 제거 / 버전 표기 고정
+# 버전 19 - 입력폭 확정/폰트 통일/간격 정리/mm입력부 제거/버전표기 고정/정렬 수정
 import os, sys, json, traceback
 from kivy.app import App
 from kivy.metrics import dp
@@ -80,7 +80,7 @@ class DigitInput(TextInput):
         self.halign = "left"
         self.padding = (dp(6), dp(5))
         self.font_name = FONT
-        self.font_size = dp(16)  # 입력 박스 폰트 16으로 통일
+        self.font_size = dp(16)     # (v19) 입력 폰트 16으로 통일
         self.height = dp(30)
         self.background_normal = ""
         self.background_active = ""
@@ -108,7 +108,7 @@ class AlnumInput(TextInput):
         self.halign = "left"
         self.padding = (dp(6), dp(5))
         self.font_name = FONT
-        self.font_size = dp(16)  # 입력 박스 폰트 16으로 통일
+        self.font_size = dp(16)     # (v19) 입력 폰트 16으로 통일
         self.height = dp(30)
         self.background_normal = ""
         self.background_active = ""
@@ -172,8 +172,7 @@ def load_settings():
     try:
         if os.path.exists(SETTINGS_FILE):
             with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-                got = json.load(f) or {}
-            st.update(got)
+                st.update(json.load(f) or {})
     except Exception:
         pass
     return st
@@ -192,11 +191,11 @@ class MainScreen(Screen):
         self.app = app
         self.build_ui()
 
-    # 입력폭 기준값(설정 1번 비율) + 90% 축소 반영
-    BASE_W = dp(53) * 0.9
-    SLAB_W = BASE_W * (5/2.0)      # 5칸 비율
-    GUIDE_W = BASE_W * (4/2.0)     # 4칸 비율
-    CODE_BACK_W = dp(38) * 0.9     # 뒷자리(살짝만 키움 → 최종 90% 축소 적용)
+    # (v19) 입력 폭 권장치
+    W_CODE_FRONT = dp(48)   # 앞 3자리
+    W_CODE_BACK  = dp(26)   # 뒤 1자리
+    W_SLAB       = dp(100)  # 5자리
+    W_GUIDE      = dp(85)   # 4자리
 
     def build_ui(self):
         Window.clearcolor = (0.93, 0.93, 0.93, 1)
@@ -220,7 +219,7 @@ class MainScreen(Screen):
         title.bind(size=lambda *_: setattr(title, "text_size", title.size))
         root.add_widget(title)
 
-        # 강번 입력 (접두어 라벨 + 앞자리 + -0 + 뒷자리)
+        # 강번 입력
         row_code = BoxLayout(orientation="horizontal", size_hint=(1,None),
                              height=dp(30), spacing=dp(4))
         lab = Label(text="강번 입력:", font_name=FONT, color=(0,0,0,1),
@@ -235,7 +234,7 @@ class MainScreen(Screen):
         self.lab_prefix.bind(size=lambda *_: setattr(self.lab_prefix, "text_size", self.lab_prefix.size))
         row_code.add_widget(self.lab_prefix)
 
-        self.in_code_front = DigitInput(max_len=3, allow_float=False, width=dp(60)*0.9)
+        self.in_code_front = DigitInput(max_len=3, allow_float=False, width=self.W_CODE_FRONT)
         self.in_code_front.bind(text=self._auto_move_back)
         row_code.add_widget(self.in_code_front)
 
@@ -244,23 +243,23 @@ class MainScreen(Screen):
         dash.bind(size=lambda *_: setattr(dash, "text_size", dash.size))
         row_code.add_widget(dash)
 
-        self.in_code_back = DigitInput(max_len=1, allow_float=False, width=self.CODE_BACK_W)
+        self.in_code_back = DigitInput(max_len=1, allow_float=False, width=self.W_CODE_BACK)
         row_code.add_widget(self.in_code_back)
         root.add_widget(row_code)
 
-        # Slab 실길이 (이전 '실제 Slab 길이' 명칭 변경)
+        # Slab 실길이 (입력칸엔 mm 없음)
         row_total = BoxLayout(orientation="horizontal", size_hint=(1,None),
                               height=dp(30), spacing=dp(4))
         lab_t = Label(text="Slab 실길이:", font_name=FONT, color=(0,0,0,1),
                       size_hint=(None,1), width=dp(104), halign="right", valign="middle")
         lab_t.bind(size=lambda *_: setattr(lab_t, "text_size", lab_t.size))
         row_total.add_widget(lab_t)
-        self.in_total = DigitInput(max_len=5, allow_float=True, width=self.SLAB_W)
+        self.in_total = DigitInput(max_len=5, allow_float=True, width=self.W_SLAB)
         row_total.add_widget(self.in_total)
         row_total.add_widget(Widget())
         root.add_widget(row_total)
 
-        # 지시길이
+        # 지시길이들
         grid = GridLayout(cols=4, size_hint=(1,None), height=dp(30*3+8*2),
                           row_default_height=dp(30), row_force_default=True, spacing=dp(8))
         def _lab(text, w):
@@ -268,16 +267,15 @@ class MainScreen(Screen):
                       size_hint=(None,1), width=w, halign="right", valign="middle")
             L.bind(size=lambda *_: setattr(L, "text_size", L.size))
             return L
-        self.in_p1 = DigitInput(max_len=4, allow_float=True, width=self.GUIDE_W)
-        self.in_p2 = DigitInput(max_len=4, allow_float=True, width=self.GUIDE_W)
-        self.in_p3 = DigitInput(max_len=4, allow_float=True, width=self.GUIDE_W)
+        self.in_p1 = DigitInput(max_len=4, allow_float=True, width=self.W_GUIDE)
+        self.in_p2 = DigitInput(max_len=4, allow_float=True, width=self.W_GUIDE)
+        self.in_p3 = DigitInput(max_len=4, allow_float=True, width=self.W_GUIDE)
 
         grid.add_widget(_lab("1번 지시길이:", dp(104))); grid.add_widget(self.in_p1); grid.add_widget(Label()); grid.add_widget(Label())
 
         grid.add_widget(_lab("2번 지시길이:", dp(104))); grid.add_widget(self.in_p2)
         b21 = RoundedButton(text="← 1번", bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1],
                             size_hint=(None,1), width=dp(58))
-        b21.font_size = dp(17)
         b21.bind(on_release=lambda *_: self._copy(self.in_p1, self.in_p2))
         grid.add_widget(b21); grid.add_widget(Label())
 
@@ -286,10 +284,8 @@ class MainScreen(Screen):
                             size_hint=(None,1), width=dp(58*2+8))
         b31 = RoundedButton(text="← 1번", bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1],
                             size_hint=(None,1), width=dp(58))
-        b31.font_size = dp(17)
         b32 = RoundedButton(text="← 2번", bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1],
                             size_hint=(None,1), width=dp(58))
-        b32.font_size = dp(17)
         b31.bind(on_release=lambda *_: self._copy(self.in_p1, self.in_p3))
         b32.bind(on_release=lambda *_: self._copy(self.in_p2, self.in_p3))
         btn_row.add_widget(b31); btn_row.add_widget(b32)
@@ -322,7 +318,7 @@ class MainScreen(Screen):
         root.add_widget(self.warn_bar)
 
         # 출력(하얀 박스) — 남는 공간 가득
-        out_wrap = BoxLayout(orientation="vertical", size_hint=(1,1), padding=[0,0,0,0])
+        out_wrap = BoxLayout(orientation="vertical", size_hint=(1,1))
         self.out = Label(text="", font_name=FONT, color=(0,0,0,1),
                          size_hint=(1,1), halign="left", valign="top")
         with self.out.canvas.before:
@@ -363,20 +359,20 @@ class MainScreen(Screen):
         self.warn_bar.opacity = 0
 
     def apply_settings(self, st: dict):
-        # prefix 라벨
+        # prefix 라벨 즉시반영
         self.lab_prefix.text = st.get("prefix", "SG94") or "SG94"
         # 출력 폰트
         fs = int(st.get("out_font", 15))
         self.out.font_size = dp(fs)
-        # 자동 폰트 스케일
+        # 자동 폰트 스케일(옵션). 기본은 16 유지, ON이면 살짝 스케일
+        base = 16.0
         if bool(st.get("auto_font", False)):
             scale = max(1.0, min(1.3, Window.width/360.0))
         else:
             scale = 1.0
-        base = dp(16) * scale  # 입력 폰트 16 기준 스케일
         for w in (self.in_code_front, self.in_code_back, self.in_total,
                   self.in_p1, self.in_p2, self.in_p3):
-            w.font_size = base
+            w.font_size = dp(base*scale)
 
     def calculate(self):
         try:
@@ -447,17 +443,20 @@ class MainScreen(Screen):
 
 # ===== 설정 화면 =====
 class SettingsScreen(Screen):
+    # (v19) 설정 입력 폭 규격
+    W_PREFIX = dp(70)  # 1번 입력(4자리)
+    W_FONT   = dp(45)  # 3번 결과값 글자 크기(2자리)
+    W_LOSS   = dp(45)  # 5번 절단 손실(2자리)
+
     def __init__(self, app, **kwargs):
         super().__init__(**kwargs)
         self.app = app
         self.build_ui()
 
-    BASE_W = dp(53) * 0.9  # 90% 축소 적용
-
     def _title(self, text):
-        lab = Label(text=text, font_name=FONT, font_size=dp(28),
+        lab = Label(text=text, font_name=FONT, font_size=dp(32),  # (v19) 32로 상향
                     color=(0,0,0,1), halign="center", valign="middle",
-                    size_hint=(1,None), height=dp(36))
+                    size_hint=(1,None), height=dp(44))
         lab.bind(size=lambda *_: setattr(lab, "text_size", lab.size))
         return lab
 
@@ -467,11 +466,18 @@ class SettingsScreen(Screen):
         lab.bind(size=lambda *_: setattr(lab, "text_size", lab.size))
         return lab
 
+    def _left_title(self, text):
+        # 제목 라벨이 오른쪽으로 밀리는 문제 방지: text_size 바인딩
+        lab = Label(text=text, font_name=FONT, color=(0,0,0,1),
+                    size_hint=(1,None), height=dp(24),
+                    halign="left", valign="middle")
+        lab.bind(size=lambda *_: setattr(lab, "text_size", lab.size))
+        return lab
+
     def build_ui(self):
         Window.clearcolor = (0.93, 0.93, 0.93, 1)
-        # 저장 버튼과 최상단 간격 dp(6)
         root = BoxLayout(orientation="vertical",
-                         padding=[dp(12), dp(6), dp(12), dp(6)],
+                         padding=[dp(12), dp(6), dp(12), dp(6)],  # 상단 6dp (v19)
                          spacing=dp(6))
         self.add_widget(root)
 
@@ -486,93 +492,84 @@ class SettingsScreen(Screen):
 
         # 제목
         root.add_widget(self._title("환경설정"))
-
-        # 제목과 1번 사이 간격 dp(12)
+        # 제목과 1번 사이 간격 12dp (v19)
         root.add_widget(Widget(size_hint=(1,None), height=dp(12)))
 
-        body = BoxLayout(orientation="vertical", spacing=dp(6))
+        body = BoxLayout(orientation="vertical", spacing=dp(4))
         root.add_widget(body)
 
-        # ========== 두 줄 구성 (1~7) ==========
-        # 1. 강번 고정부 변경
-        body.add_widget(Label(text="1. 강번 고정부 변경", font_name=FONT, color=(0,0,0,1),
-                              size_hint=(1,None), height=dp(22), halign="left", valign="middle"))
+        # 1. 강번 고정부 변경 (2줄 구성)
+        body.add_widget(self._left_title("1. 강번 고정부 변경"))
         row1 = BoxLayout(size_hint=(1,None), height=dp(30), spacing=dp(8))
-        self.ed_prefix = AlnumInput(max_len=6, width=self.BASE_W)
-        self.ed_prefix.text = self.app.st.get("prefix", "SG94")
+        self.ed_prefix = AlnumInput(max_len=4, width=self.W_PREFIX)  # 4자리 제한
+        self.ed_prefix.text = self.app.st.get("prefix", "SG94")[:4]
         row1.add_widget(self.ed_prefix)
         row1.add_widget(self._gray("강번 맨앞 영문 + 숫자 고정부 변경", h=dp(30)))
         body.add_widget(row1)
 
         # 2. 정수 결과 반올림
-        body.add_widget(Label(text="2. 정수 결과 반올림", font_name=FONT, color=(0,0,0,1),
-                              size_hint=(1,None), height=dp(22), halign="left", valign="middle"))
+        body.add_widget(self._left_title("2. 정수 결과 반올림"))
         row2 = BoxLayout(size_hint=(1,None), height=dp(30), spacing=dp(8))
         self.sw_round = PillSwitch(active=bool(self.app.st.get("round", False)))
-        row2.add_widget(self.sw_round)
-        row2.add_widget(self._gray("출력부 소수값을 정수로 표시", h=dp(30)))
+        row2.add_widget(self.sw_round); row2.add_widget(self._gray("출력부 소수값을 정수로 표시"))
         body.add_widget(row2)
 
-        # 3. 결과값 글자 크기 (px)
-        body.add_widget(Label(text="3. 결과값 글자 크기 (px)", font_name=FONT, color=(0,0,0,1),
-                              size_hint=(1,None), height=dp(22), halign="left", valign="middle"))
+        # 3. 결과값 글자 크기
+        body.add_widget(self._left_title("3. 결과값 글자 크기 (px)"))
         row3 = BoxLayout(size_hint=(1,None), height=dp(30), spacing=dp(8))
-        self.ed_out_font = DigitInput(max_len=2, allow_float=False, width=self.BASE_W)
+        self.ed_out_font = DigitInput(max_len=2, allow_float=False, width=self.W_FONT)
         try:
-            self.ed_out_font.text = str(int(self.app.st.get("out_font", 15)))
+            self.ed_out_font.text = str(int(self.app.st.get("out_font", 15)))[:2]
         except Exception:
             self.ed_out_font.text = "15"
         row3.add_widget(self.ed_out_font)
-        row3.add_widget(self._gray("결과 표시 라벨 글자 크기", h=dp(30)))
+        row3.add_widget(self._gray("결과 표시 영역의 글자 크기", h=dp(30)))
         body.add_widget(row3)
 
         # 4. 결과값 mm 표시 제거
-        body.add_widget(Label(text="4. 결과값 mm 표시 제거", font_name=FONT, color=(0,0,0,1),
-                              size_hint=(1,None), height=dp(22), halign="left", valign="middle"))
+        body.add_widget(self._left_title("4. 결과값 mm 표시 제거"))
         row4 = BoxLayout(size_hint=(1,None), height=dp(30), spacing=dp(8))
         self.sw_hide_mm = PillSwitch(active=bool(self.app.st.get("hide_mm", False)))
-        row4.add_widget(self.sw_hide_mm)
-        row4.add_widget(self._gray("체크 시 단위(mm) 문구 숨김 (숫자만 표시)", h=dp(30)))
+        row4.add_widget(self.sw_hide_mm); row4.add_widget(self._gray("체크 시 단위(mm) 문구 숨김"))
         body.add_widget(row4)
 
         # 5. 절단 손실 길이 조정
-        body.add_widget(Label(text="5. 절단 손실 길이 조정", font_name=FONT, color=(0,0,0,1),
-                              size_hint=(1,None), height=dp(22), halign="left", valign="middle"))
+        body.add_widget(self._left_title("5. 절단 손실 길이 조정"))
         row5 = BoxLayout(size_hint=(1,None), height=dp(30), spacing=dp(8))
-        self.ed_loss = DigitInput(max_len=3, allow_float=True, width=self.BASE_W)
-        self.ed_loss.text = f"{float(self.app.st.get('loss_mm', 15.0)):.0f}"
+        self.ed_loss = DigitInput(max_len=2, allow_float=True, width=self.W_LOSS)  # 2자리/45dp
+        try:
+            self.ed_loss.text = f"{int(float(self.app.st.get('loss_mm', 15.0))):d}"[:2]
+        except Exception:
+            self.ed_loss.text = "15"
         row5.add_widget(self.ed_loss)
         row5.add_widget(self._gray("절단 시 손실 보정 길이 (mm)", h=dp(30)))
         body.add_widget(row5)
 
         # 6. 모바일 대응 자동 폰트 크기 조절
-        body.add_widget(Label(text="6. 모바일 대응 자동 폰트 크기 조절", font_name=FONT, color=(0,0,0,1),
-                              size_hint=(1,None), height=dp(22), halign="left", valign="middle"))
+        body.add_widget(self._left_title("6. 모바일 대응 자동 폰트 크기 조절"))
         row6 = BoxLayout(size_hint=(1,None), height=dp(30), spacing=dp(8))
         self.sw_auto_font = PillSwitch(active=bool(self.app.st.get("auto_font", False)))
-        row6.add_widget(self.sw_auto_font)
-        row6.add_widget(self._gray("화면 해상도에 맞게 입력부 폰트 자동 스케일", h=dp(30)))
+        row6.add_widget(self.sw_auto_font); row6.add_widget(self._gray("화면 해상도에 맞춰 입력부 폰트 자동 스케일"))
         body.add_widget(row6)
 
         # 7. 출력값 위치 이동
-        body.add_widget(Label(text="7. 출력값 위치 이동", font_name=FONT, color=(0,0,0,1),
-                              size_hint=(1,None), height=dp(22), halign="left", valign="middle"))
+        body.add_widget(self._left_title("7. 출력값 위치 이동"))
         row7 = BoxLayout(size_hint=(1,None), height=dp(30), spacing=dp(8))
         self.sw_swap = PillSwitch(active=bool(self.app.st.get("swap_sections", False)))
-        row7.add_widget(self.sw_swap)
-        row7.add_widget(self._gray("ON 시 '시각화' · '절단 후 예상 길이' 순서 변경", h=dp(30)))
+        row7.add_widget(self.sw_swap); row7.add_widget(self._gray("ON 시 '시각화'가 먼저, 그 다음 '절단 후 예상 길이'"))
         body.add_widget(row7)
 
-        # 하단 버전 표기 고정
-        sig = Label(text="버전 1.0", font_name=FONT, color=(0.4,0.4,0.4,1),
+        # 하단 버전 표기 (고정)
+        sig = Label(text="버전 1.0(설정)", font_name=FONT, color=(0.4,0.4,0.4,1),
                     size_hint=(1,None), height=dp(22), halign="right", valign="middle")
         sig.bind(size=lambda *_: setattr(sig, "text_size", sig.size))
         root.add_widget(sig)
 
     def _save_and_back(self):
         try:
-            prefix = (self.ed_prefix.text or "SG94").upper()
-            if not prefix: prefix = "SG94"
+            prefix = (self.ed_prefix.text or "SG94").upper()[:4]
+            if not prefix:
+                prefix = "SG94"
             try:
                 out_font = int(self.ed_out_font.text or "15")
             except Exception:
@@ -581,6 +578,8 @@ class SettingsScreen(Screen):
             loss = _num_or_none(self.ed_loss.text)
             if loss is None or loss <= 0:
                 loss = 15.0
+            # 2자리 제한이지만 float 허용 → 정수화 저장
+            loss = int(round_half_up(loss))
 
             st = dict(self.app.st)
             st.update({
