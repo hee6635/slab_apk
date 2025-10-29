@@ -10,46 +10,63 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) 소스 체크아웃
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2) 파이썬 런타임 설치
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # 3) 빌드 도구 설치
-      #    ※ p4a 버전 미스매치로 실패하던 부분 수정 (버전 고정 제거)
-      #    필요 시 아래 주석을 풀고 2024.1.21로 고정해도 됩니다.
       - name: Install build tools
         run: |
           python -m pip install --upgrade pip
           pip install --upgrade buildozer python-for-android cython wheel
-          # pip install --upgrade buildozer python-for-android==2024.1.21 cython wheel
+          # 필요시: pip install --upgrade buildozer python-for-android==2024.1.21 cython wheel
 
-      # 4) 캐시 완전 삭제 (local + global) → 이전 armv7/NDK 흔적 제거
+      # 캐시 완전 삭제 (이전 armv7/NDK 흔적 제거)
       - name: Clean buildozer caches (local & global)
         run: |
           rm -rf .buildozer
           rm -rf $GITHUB_WORKSPACE/.buildozer_global
           rm -rf $HOME/.buildozer
 
-      # 5) spec 주요 항목 확인 (로그에 찍히면 정상)
       - name: Sanity check spec
         run: |
-          echo "[android] section quick check:"
+          echo "[android] quick check:"
           grep -E '^(android\.api|android\.minapi|android\.ndk_api|android\.archs)' buildozer.spec || true
 
-      # 6) 빌드 실행 (verbose)
+      # ▶ SDK 경로 생성을 위해 1회 부트스트랩(실패 무시)
+      - name: Bootstrap SDK (non-fatal)
+        run: |
+          set +e
+          buildozer android debug
+          exit 0
+
+      # ▶ 라이선스 자동수락 + 필수 패키지 설치
+      - name: Accept SDK licenses & install packages
+        run: |
+          SDK="$HOME/.buildozer/android/platform/android-sdk"
+          if [ ! -x "$SDK/cmdline-tools/latest/bin/sdkmanager" ]; then
+            echo "sdkmanager not found at $SDK; listing tree for debug:"
+            ls -la "$HOME/.buildozer/android/platform" || true
+          fi
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" --licenses
+          # 우선 최신 시도 후, 안 되면 34 라인으로 폴백
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" \
+              "platform-tools" "platforms;android-34" "build-tools;36.1.0" || true
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" \
+              "platform-tools" "platforms;android-34" "build-tools;36.0.0" || true
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" \
+              "platform-tools" "platforms;android-34" "build-tools;34.0.0" || true
+
+      # ▶ 실제 빌드 재실행
       - name: Build (verbose)
         env:
           P4A_LOG_LEVEL: "2"
         run: |
           buildozer --verbose android debug
 
-      # 7) 산출물 업로드
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
