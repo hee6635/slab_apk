@@ -10,37 +10,46 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1) 소스 체크아웃
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 2) 파이썬 런타임 설치
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
+      # 3) 빌드 도구 설치
+      #    ※ p4a 버전 미스매치로 실패하던 부분 수정 (버전 고정 제거)
+      #    필요 시 아래 주석을 풀고 2024.1.21로 고정해도 됩니다.
       - name: Install build tools
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade buildozer python-for-android==2024.9.27 cython wheel
+          pip install --upgrade buildozer python-for-android cython wheel
+          # pip install --upgrade buildozer python-for-android==2024.1.21 cython wheel
 
-      # 🔥 핵심: 캐시 완전 삭제 (local + global). 이전 armv7/NDK 흔적 제거
+      # 4) 캐시 완전 삭제 (local + global) → 이전 armv7/NDK 흔적 제거
       - name: Clean buildozer caches (local & global)
         run: |
           rm -rf .buildozer
           rm -rf $GITHUB_WORKSPACE/.buildozer_global
           rm -rf $HOME/.buildozer
 
+      # 5) spec 주요 항목 확인 (로그에 찍히면 정상)
       - name: Sanity check spec
         run: |
           echo "[android] section quick check:"
           grep -E '^(android\.api|android\.minapi|android\.ndk_api|android\.archs)' buildozer.spec || true
 
+      # 6) 빌드 실행 (verbose)
       - name: Build (verbose)
         env:
           P4A_LOG_LEVEL: "2"
         run: |
           buildozer --verbose android debug
 
+      # 7) 산출물 업로드
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
