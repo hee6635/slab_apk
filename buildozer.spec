@@ -38,3 +38,6 @@ android.archs = arm64-v8a
 # API 33+에서는 외부저장소 권한이 사실상 폐지됨.
 # 파일 접근 안 쓰면 비워두는 게 경고 줄이는 데 유리
 android.permissions =
+# API 33+에서는 외부저장소 권한이 사실상 폐지됨.
+# 파일 접근 안 쓰면 비워두는 게 경고 줄이는 데 유리
+android.permissions =
