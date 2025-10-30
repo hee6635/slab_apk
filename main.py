@@ -112,7 +112,7 @@ class AlnumInput(TextInput):
         self.size_hint_x = None
         self.padding = (dp(6), dp(5))
         self.multiline = False
-               self.halign = "left"
+        self.halign = "left"   # ← 들여쓰기 수정
         self.font_name = FONT
         self.font_size = dp(17)
         self.height = dp(30)
@@ -458,9 +458,7 @@ class SettingsScreen(Screen):
             color=(0,0,0,1), halign="center", valign="middle",
             size_hint=(1,None)
         )
-        # 한 줄 유지 (세로 래핑 방지)
         lab.bind(size=lambda *_: setattr(lab, "text_size", (lab.width, None)))
-        # 텍스처 높이에 맞춰 자동 조정 (최소 28dp 가드)
         def _fit(*_):
             h = lab.texture_size[1]
             lab.height = max(dp(28), h)
@@ -507,7 +505,7 @@ class SettingsScreen(Screen):
         # 타이틀
         root.add_widget(self._title("환경설정"))
 
-        # ✅ 스페이서 제거(고정 위젯 없음), body 상단 패딩으로만 타이틀↔1번 간격 32dp 유지
+        # 본문: 타이틀↔1번 간격 32dp, 나머지 항목 spacing 12dp
         body = BoxLayout(orientation="vertical", spacing=dp(12), padding=[0, dp(32), 0, 0])
         root.add_widget(body)
 
@@ -546,7 +544,7 @@ class SettingsScreen(Screen):
         self.sw_swap = PillSwitch(active=bool(self.app.st.get("swap_sections", False)))
         body.add_widget(self._indent_row(self.sw_swap, self._gray("절단 예상 길이를 아래로 위치")))
 
-        # ✅ 아래쪽 신축 스페이서: 남는 여백을 전부 하단으로 몰아줘서 화면별 균형 유지
+        # 아래 신축 스페이서
         root.add_widget(Widget(size_hint=(1,1)))
 
         # 하단 버전 표기
