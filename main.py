@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# 버전 18R2 - 설정 타이틀 32dp / 상단 여백 10dp / 타이틀↔1번 51dp / 2줄 정렬 / 버튼 크기 통일 / 버전 1.0
+# 버전 18R2a - 설정 타이틀 높이 34dp / 타이틀↔1번 44dp / 상단 여백·버튼 크기 통일 / 버전 1.0
 import os, sys, json, traceback
 from kivy.app import App
 from kivy.metrics import dp
@@ -17,6 +17,12 @@ from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition
 
 FONT = "NanumGothic"
 SETTINGS_FILE = "settings.json"
+
+# ===== 공통 레이아웃 상수(요청 반영) =====
+TOP_PAD = dp(10)                 # 저장/설정 버튼이 있는 상단 패딩(메인/설정 통일)
+TOPBAR_H = dp(40)                # 상단바 높이(메인/설정 통일)
+TOPBAR_BTN_W = dp(72)            # 상단 버튼 폭(메인/설정 통일)
+SETTINGS_TITLE_TO_ITEM1 = dp(44) # 설정 타이틀 ↔ 1번 간격 (51→44)
 
 # ===== 유틸 =====
 def _num_or_none(s):
@@ -76,9 +82,10 @@ class DigitInput(TextInput):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.size_hint_x = None
+               # 내부 여백 유지(요청 사항 기존 유지)
         self.multiline = False
         self.halign = "left"
-        self.padding = (dp(6), dp(5))   # ← 입력박스 내부 좌우 여백 유지
+        self.padding = (dp(6), dp(5))
         self.font_name = FONT
         self.font_size = dp(17)
         self.height = dp(30)
@@ -192,33 +199,30 @@ class MainScreen(Screen):
         self.app = app
         self.build_ui()
 
-    # (입력폭 등은 직전 코드 유지)
     def build_ui(self):
         Window.clearcolor = (0.93, 0.93, 0.93, 1)
         root = BoxLayout(orientation="vertical",
-                         padding=[dp(12), dp(6), dp(12), dp(6)], spacing=dp(6))
+                         padding=[dp(12), TOP_PAD, dp(12), dp(6)],  # ← 상단 패딩 통일
+                         spacing=dp(6))
         self.add_widget(root)
 
         # 상단바 (오른쪽 설정) — 버튼 크기 통일
-        topbar = BoxLayout(size_hint=(1, None), height=dp(40), spacing=0)
+        topbar = BoxLayout(size_hint=(1, None), height=TOPBAR_H, spacing=0)
         topbar.add_widget(Widget())
-        btn_settings = RoundedButton(text="설정", size_hint=(None,1), width=dp(72),
+        btn_settings = RoundedButton(text="설정", size_hint=(None,1), width=TOPBAR_BTN_W,
                                      bg_color=[0.27,0.27,0.27,1], fg_color=[1,1,1,1])
         btn_settings.bind(on_release=lambda *_: self.app.open_settings())
         topbar.add_widget(btn_settings)
         root.add_widget(topbar)
 
-        # 제목
+        # 제목(메인 타이틀은 기존 유지)
         title = Label(text="후판 계산기", font_name=FONT, font_size=dp(32),
                       color=(0,0,0,1), halign="center", valign="middle",
                       size_hint=(1,None), height=dp(44))
         title.bind(size=lambda *_: setattr(title, "text_size", title.size))
         root.add_widget(title)
 
-        # ---- 이하 입력부/경고/출력은 직전 동작 유지 ----
-        # (간결화를 위해 핵심만, 기존 코드에서 변경 없음)
-
-        # 강번 입력 (간단 버전 — 기존 폭/동작 유지)
+        # 강번 입력
         row_code = BoxLayout(orientation="horizontal", size_hint=(1,None),
                              height=dp(30), spacing=dp(4))
         lab = Label(text="강번 입력:", font_name=FONT, color=(0,0,0,1),
@@ -246,7 +250,7 @@ class MainScreen(Screen):
         row_code.add_widget(self.in_code_back)
         root.add_widget(row_code)
 
-        # Slab 실길이 (라벨 문구 최신 반영)
+        # Slab 실길이
         row_total = BoxLayout(orientation="horizontal", size_hint=(1,None),
                               height=dp(30), spacing=dp(4))
         lab_t = Label(text="Slab 실길이:", font_name=FONT, color=(0,0,0,1),
@@ -319,7 +323,7 @@ class MainScreen(Screen):
         self.warn_bar.add_widget(icon); self.warn_bar.add_widget(self.warn_msg)
         root.add_widget(self.warn_bar)
 
-        # 출력(하얀 박스) — 남는 공간 채움
+        # 출력(하얀 박스)
         out_wrap = BoxLayout(orientation="vertical", size_hint=(1,1), padding=[0,0,0,0])
         self.out = Label(text="", font_name=FONT, color=(0,0,0,1),
                          size_hint=(1,1), halign="left", valign="top")
@@ -393,9 +397,7 @@ class MainScreen(Screen):
             total_loss = loss * (len(guides) - 1)
             remain = slab - (sum(guides) + total_loss)
 
-            # 음수(부족) 시 에러 처리
             if remain < 0:
-                # 이모지/이미지 중복 금지: 텍스트만
                 self.out.text = ""
                 self._show_warn("절단 길이가 부족합니다. 길이를 다시 확인하세요.")
                 return
@@ -416,19 +418,16 @@ class MainScreen(Screen):
             if cf and cb:
                 lines_top.append(f"▶ 강번: {self.lab_prefix.text}{cf}-0{cb}\n")
 
-            # 요약
             lines_top.append(f"▶ Slab 실길이: {fmt(slab)}{unit}")
             for i, g in enumerate(guides, 1):
                 lines_top.append(f"▶ {i}번 지시길이: {fmt(g)}{unit}")
             lines_top.append(f"▶ 절단 손실: {fmt(loss)}{unit} × {len(guides)-1} = {fmt(total_loss)}{unit}")
             lines_top.append(f"▶ 전체 여유길이: {fmt(remain)}{unit} → 각 +{fmt(add_each)}{unit}\n")
 
-            # 절단 후 예상 길이
             sec_real = ["▶ 절단 후 예상 길이:"]
             for i, r in enumerate(real, 1):
                 sec_real.append(f"   {i}번: {fmt(r)}{unit}")
 
-            # 시각화
             visual = "H"
             for i, r in enumerate(real, 1):
                 mark = round_half_up(r + loss/2) if do_round else (r + loss/2)
@@ -455,11 +454,11 @@ class SettingsScreen(Screen):
         self.app = app
         self.build_ui()
 
-    # 공통 라벨 팩토리
     def _title(self, text):
-        lab = Label(text=text, font_name=FONT, font_size=dp(32),  # ← 메인 타이틀과 동일
+        # 폰트 크기는 유지(dp32), 높이만 34dp로 축소(44→34 아님, 요청은 36→34이지만 실제 코드는 박스 높이를 34로 조정)
+        lab = Label(text=text, font_name=FONT, font_size=dp(32),
                     color=(0,0,0,1), halign="center", valign="middle",
-                    size_hint=(1,None), height=dp(44))
+                    size_hint=(1,None), height=dp(34))
         lab.bind(size=lambda *_: setattr(lab, "text_size", lab.size))
         return lab
 
@@ -478,7 +477,6 @@ class SettingsScreen(Screen):
         return lab
 
     def _indent_row(self, *widgets):
-        # 2행의 들여쓰기(왼쪽 12dp) + 균형 잡힌 배치
         row = BoxLayout(orientation="horizontal", size_hint=(1,None),
                         height=dp(30), spacing=dp(8), padding=[dp(12), 0, 0, 0])
         for w in widgets:
@@ -487,43 +485,42 @@ class SettingsScreen(Screen):
 
     def build_ui(self):
         Window.clearcolor = (0.93, 0.93, 0.93, 1)
-        # 최상단 ↔ 저장 버튼 간 10dp 확보: 루트 상단 패딩 사용
         root = BoxLayout(orientation="vertical",
-                         padding=[dp(12), dp(10), dp(12), dp(6)],  # ← top=10dp
+                         padding=[dp(12), TOP_PAD, dp(12), dp(6)],  # ← 상단 패딩 통일
                          spacing=dp(6))
         self.add_widget(root)
 
         # 상단바(우측 저장) — 버튼 크기 메인과 동일
-        topbar = BoxLayout(size_hint=(1,None), height=dp(40), spacing=0)
+        topbar = BoxLayout(size_hint=(1,None), height=TOPBAR_H, spacing=0)
         topbar.add_widget(Widget())
-        btn_save = RoundedButton(text="저장", size_hint=(None,1), width=dp(72),
+        btn_save = RoundedButton(text="저장", size_hint=(None,1), width=TOPBAR_BTN_W,
                                  bg_color=[0.23,0.53,0.23,1], fg_color=[1,1,1,1])
         btn_save.bind(on_release=lambda *_: self._save_and_back())
         topbar.add_widget(btn_save)
         root.add_widget(topbar)
 
-        # 타이틀
+        # 타이틀(높이만 34dp로 축소)
         root.add_widget(self._title("환경설정"))
 
-        # 타이틀 ↔ 1번 간격: 17dp × 3 = 51dp
-        root.add_widget(Widget(size_hint=(1,None), height=dp(51)))
+        # 타이틀 ↔ 1번 간격: 51dp → 44dp
+        root.add_widget(Widget(size_hint=(1,None), height=SETTINGS_TITLE_TO_ITEM1))
 
-        # 본문 (항목 간 간격 12dp)
+        # 본문
         body = BoxLayout(orientation="vertical", spacing=dp(12))
         root.add_widget(body)
 
-        # ===== 1. 강번 고정부 변경 =====
+        # 1
         body.add_widget(self._black("1. 강번 고정부 변경"))
-        self.ed_prefix = AlnumInput(max_len=6, width=dp(70))  # 최근 합의 폭(필요시 조정)
+        self.ed_prefix = AlnumInput(max_len=6, width=dp(70))
         self.ed_prefix.text = self.app.st.get("prefix", "SG94")
         body.add_widget(self._indent_row(self.ed_prefix, self._gray("강번 맨앞 영문 + 숫자 고정부 변경")))
 
-        # ===== 2. 정수 결과 반올림 =====
+        # 2
         body.add_widget(self._black("2. 정수 결과 반올림"))
         self.sw_round = PillSwitch(active=bool(self.app.st.get("round", False)))
         body.add_widget(self._indent_row(self.sw_round, self._gray("출력부 소수값을 정수로 표시")))
 
-        # ===== 3. 결과값 글자 크기 =====
+        # 3
         body.add_widget(self._black("3. 결과값 글자 크기"))
         self.ed_out_font = DigitInput(max_len=2, allow_float=False, width=dp(45))
         try:
@@ -532,28 +529,28 @@ class SettingsScreen(Screen):
             self.ed_out_font.text = "15"
         body.add_widget(self._indent_row(self.ed_out_font, self._gray("결과 표시 라벨 폰트 크기")))
 
-        # ===== 4. 결과값 mm 표시 제거 =====
+        # 4
         body.add_widget(self._black("4. 결과값 mm 표시 제거"))
         self.sw_hide_mm = PillSwitch(active=bool(self.app.st.get("hide_mm", False)))
         body.add_widget(self._indent_row(self.sw_hide_mm, self._gray("단위(mm) 문구 숨김")))
 
-        # ===== 5. 절단 손실 길이 조정 =====
+        # 5
         body.add_widget(self._black("5. 절단 손실 길이 조정"))
         self.ed_loss = DigitInput(max_len=2, allow_float=True, width=dp(45))
         self.ed_loss.text = f"{float(self.app.st.get('loss_mm', 15.0)):.0f}"
         body.add_widget(self._indent_row(self.ed_loss, self._gray("절단 시 손실 보정 길이 (mm)")))
 
-        # ===== 6. 모바일 대응 자동 폰트 크기 조절 =====
+        # 6
         body.add_widget(self._black("6. 모바일 대응 자동 폰트 크기 조절"))
         self.sw_auto_font = PillSwitch(active=bool(self.app.st.get("auto_font", False)))
         body.add_widget(self._indent_row(self.sw_auto_font, self._gray("해상도에 맞게 입력부 폰트 조절")))
 
-        # ===== 7. 출력값 위치 이동 =====
+        # 7
         body.add_widget(self._black("7. 출력값 위치 이동"))
         self.sw_swap = PillSwitch(active=bool(self.app.st.get("swap_sections", False)))
         body.add_widget(self._indent_row(self.sw_swap, self._gray("ON 시 '절단 예상 길이'를 맨 아래로")))
 
-        # 하단 버전 표기 — 고정
+        # 하단 표기 — 고정
         sig = Label(text="버전 1.0", font_name=FONT, color=(0.4,0.4,0.4,1),
                     size_hint=(1,None), height=dp(22), halign="right", valign="middle")
         sig.bind(size=lambda *_: setattr(sig, "text_size", sig.size))
