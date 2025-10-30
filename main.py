@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-# 버전 18R3 - 설정 타이틀 32dp(텍스처 자동 높이) / 상단 여백 10dp / 타이틀↔1번 스페이서=28dp(총 40dp 체감) / 2줄 정렬 / 버튼 크기 통일 / 메인 하단 표기 수정
+# 버전 18R3-FINAL
+# - 설정 타이틀 32dp (텍스처 자동 높이로 내부 행간 최소화)
+# - 타이틀↔1번 간격: 스페이서 제거, body.padding_top = 32dp (체감 ~38~40dp)
+# - 상단 여백(루트 padding_top) 10dp 유지
+# - 2줄 정렬 / 버튼 크기 통일 / 메인 하단 표기 유지
+
 import os, sys, json, traceback
 from kivy.app import App
 from kivy.metrics import dp
@@ -78,7 +83,7 @@ class DigitInput(TextInput):
         self.size_hint_x = None
         self.padding = (dp(6), dp(5))
         self.multiline = False
-        self.halign = "left"       # ✔ 들여쓰기 수정
+        self.halign = "left"
         self.font_name = FONT
         self.font_size = dp(17)
         self.height = dp(30)
@@ -268,14 +273,12 @@ class MainScreen(Screen):
         self.in_p3 = DigitInput(max_len=4, allow_float=True, width=dp(66))
 
         grid.add_widget(_lab("1번 지시길이:", dp(104))); grid.add_widget(self.in_p1); grid.add_widget(Label()); grid.add_widget(Label())
-
         grid.add_widget(_lab("2번 지시길이:", dp(104))); grid.add_widget(self.in_p2)
         b21 = RoundedButton(text="← 1번", bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1],
                             size_hint=(None,1), width=dp(58))
         b21.font_size = dp(17)
         b21.bind(on_release=lambda *_: self._copy(self.in_p1, self.in_p2))
         grid.add_widget(b21); grid.add_widget(Label())
-
         grid.add_widget(_lab("3번 지시길이:", dp(104))); grid.add_widget(self.in_p3)
         btn_row = BoxLayout(orientation="horizontal", spacing=dp(8),
                             size_hint=(None,1), width=dp(58*2+8))
@@ -454,9 +457,9 @@ class SettingsScreen(Screen):
             color=(0,0,0,1), halign="center", valign="middle",
             size_hint=(1,None)  # 고정 height 제거
         )
-        # 한 줄 유지: 세로 래핑 방지
+        # 한 줄 유지 (세로 래핑 방지)
         lab.bind(size=lambda *_: setattr(lab, "text_size", (lab.width, None)))
-        # 텍스처(실제 글자) 높이에 맞춰 자동 조정 (최소 가드 28dp)
+        # 텍스처(실제 글자) 높이에 맞춰 자동 조정 (최소 28dp 가드)
         def _fit(*_):
             h = lab.texture_size[1]
             lab.height = max(dp(28), h)
@@ -503,11 +506,8 @@ class SettingsScreen(Screen):
         # 타이틀 (텍스처 자동 높이)
         root.add_widget(self._title("환경설정"))
 
-        # 타이틀↔1번 간격: spacer 28dp (6 + 28 + 6 = 40dp 체감)
-        root.add_widget(Widget(size_hint=(1,None), height=dp(28)))
-
-        # 본문
-        body = BoxLayout(orientation="vertical", spacing=dp(12))
+        # ✅ 스페이서 제거, 대신 body 상단 패딩으로 간격 제어
+        body = BoxLayout(orientation="vertical", spacing=dp(12), padding=[0, dp(32), 0, 0])
         root.add_widget(body)
 
         # 1.
