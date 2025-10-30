@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-# 버전 18R3-FINAL-FLEX
-# - 설정 타이틀 32dp (텍스처 자동 높이로 내부 행간 최소화)
-# - 타이틀↔1번 간격: 스페이서 제거, body.padding_top = 32dp (체감 ~38~40dp)
-# - 상단 여백(루트 padding_top) 10dp 유지
-# - 하단 신축 스페이서로 여백 분산(버전 라벨 위에 Widget(size_hint=(1,1)))
-# - 2줄 정렬 / 버튼 크기 통일 / 메인 하단 표기 유지
+# 버전 18R3-FINAL-FLEX-40
+# - 타이틀(텍스처 자동 높이) 아래 고정 스페이서 40dp
+# - body 상단 패딩 0
+# - 하단 신축 스페이서로 남는 여백 흡수
+# - 나머지 UI/기능 동일
 
 import os, sys, json, traceback
 from kivy.app import App
@@ -112,10 +111,11 @@ class AlnumInput(TextInput):
         self.size_hint_x = None
         self.padding = (dp(6), dp(5))
         self.multiline = False
-        self.halign = "left"   # ← 들여쓰기 수정
+        self.halign = "left"
         self.font_name = FONT
         self.font_size = dp(17)
-        self.height = dp(30)
+        theight = dp(30)
+        self.height = theight
         self.background_normal = ""
         self.background_active = ""
         self.cursor_width = dp(2)
@@ -451,7 +451,7 @@ class SettingsScreen(Screen):
         self.app = app
         self.build_ui()
 
-    # 공통 라벨 — 텍스처 높이에 자동 맞춤
+    # 공통 라벨 — 텍스처 자동 높이
     def _title(self, text):
         lab = Label(
             text=text, font_name=FONT, font_size=dp(32),
@@ -505,8 +505,11 @@ class SettingsScreen(Screen):
         # 타이틀
         root.add_widget(self._title("환경설정"))
 
-        # 본문: 타이틀↔1번 간격 32dp, 나머지 항목 spacing 12dp
-        body = BoxLayout(orientation="vertical", spacing=dp(12), padding=[0, dp(32), 0, 0])
+        # ⬇ 고정 40dp 간격 확보
+        root.add_widget(Widget(size_hint=(1, None), height=dp(40)))
+
+        # 본문: 상단 패딩 0
+        body = BoxLayout(orientation="vertical", spacing=dp(12), padding=[0, 0, 0, 0])
         root.add_widget(body)
 
         # 1~7 항목
@@ -544,7 +547,7 @@ class SettingsScreen(Screen):
         self.sw_swap = PillSwitch(active=bool(self.app.st.get("swap_sections", False)))
         body.add_widget(self._indent_row(self.sw_swap, self._gray("절단 예상 길이를 아래로 위치")))
 
-        # 아래 신축 스페이서
+        # 아래쪽 신축 스페이서
         root.add_widget(Widget(size_hint=(1,1)))
 
         # 하단 버전 표기
