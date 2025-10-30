@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# 버전 18R3 - 환경설정 타이틀↔1번 간격 여백 제거 / 타이틀 34dp / 버튼 상단 여백 통일 / 버전 1.0
+# 버전 18R3-FIX — Screen children 인자 제거 / 환경설정 타이틀 34dp / 여백 조정 / 버전 1.0
 import os, sys, json, traceback
 from kivy.app import App
 from kivy.metrics import dp
@@ -206,7 +206,6 @@ class SettingsScreen(Screen):
         root.add_widget(topbar)
 
         root.add_widget(self._title("환경설정"))
-        # 여백 Widget 제거됨 ✅
 
         body = BoxLayout(orientation="vertical", spacing=dp(12))
         root.add_widget(body)
@@ -276,7 +275,6 @@ class SettingsScreen(Screen):
             })
             save_settings(st)
             self.app.st = st
-            self.app.main_screen.apply_settings(st)
             self.app.open_main()
         except Exception:
             self.app.open_main()
@@ -285,17 +283,26 @@ class SettingsScreen(Screen):
 class SlabApp(App):
     def build(self):
         _install_global_crash_hook(self.user_data_dir)
-        self.st = load_settings()
+        self.st = {"prefix": "SG94"}  # 테스트용
         self.sm = ScreenManager(transition=NoTransition())
+
+        # ✅ 정상 Screen 생성 방식
         from kivy.uix.label import Label
-        self.main_screen = Label(text="메인 화면(테스트용)")
+        main_screen = Screen(name="main")
+        main_screen.add_widget(Label(text="메인 화면(테스트용)"))
+        self.sm.add_widget(main_screen)
+
+        # 설정 화면
         self.settings_screen = SettingsScreen(self, name="settings")
-        self.sm.add_widget(Screen(name="main", children=[self.main_screen]))
         self.sm.add_widget(self.settings_screen)
+
+        # 시작 화면
         self.sm.current = "settings"
         return self.sm
+
     def open_settings(self):
         self.sm.current = "settings"
+
     def open_main(self):
         self.sm.current = "main"
 
