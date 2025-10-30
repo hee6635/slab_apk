@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# 버전 18R3 - 설정 타이틀 32dp(박스 34dp) / 상단 여백 10dp / 타이틀↔1번 스페이서 제거 / 2줄 정렬 / 버튼 크기 통일 / 메인 하단 표기 수정
+# 버전 18R3 - 설정 타이틀 32dp(박스 34dp) / 상단 여백 10dp / 타이틀↔1번 스페이서=28dp(총 40dp 체감) / 2줄 정렬 / 버튼 크기 통일 / 메인 하단 표기 수정
 import os, sys, json, traceback
 from kivy.app import App
 from kivy.metrics import dp
@@ -78,7 +78,7 @@ class DigitInput(TextInput):
         self.size_hint_x = None
         self.padding = (dp(6), dp(5))
         self.multiline = False
-        self.halign = "left"
+               self.halign = "left"
         self.font_name = FONT
         self.font_size = dp(17)
         self.height = dp(30)
@@ -248,7 +248,7 @@ class MainScreen(Screen):
                               height=dp(30), spacing=dp(4))
         lab_t = Label(text="Slab 실길이:", font_name=FONT, color=(0,0,0,1),
                       size_hint=(None,1), width=dp(104), halign="right", valign="middle")
-        lab_t.bind(size=lambda *_: setattr(lab_t, "text_size", lab.size))
+        lab_t.bind(size=lambda *_: setattr(lab_t, "text_size", lab_t.size))
         row_total.add_widget(lab_t)
         self.in_total = DigitInput(max_len=5, allow_float=True, width=dp(74))
         row_total.add_widget(self.in_total)
@@ -495,8 +495,8 @@ class SettingsScreen(Screen):
         # 타이틀
         root.add_widget(self._title("환경설정"))
 
-        # ▼ 타이틀↔1번 간 스페이서 완전 제거(여백 0dp)
-        # root.add_widget(Widget(size_hint=(1,None), height=dp(44)))
+        # ▼ 타이틀↔1번 간격: spacer 28dp (root.spacing 6 + 28 + 6 = 40dp)
+        root.add_widget(Widget(size_hint=(1,None), height=dp(28)))
 
         # 본문
         body = BoxLayout(orientation="vertical", spacing=dp(12))
