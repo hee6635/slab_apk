@@ -506,7 +506,7 @@ class SettingsScreen(Screen):
         root.add_widget(self._title("환경설정"))
 
         # ⬇ 고정 40dp 간격 확보
-        root.add_widget(Widget(size_hint=(1, None), height=dp(40)))
+        root.add_widget(Widget(size_hint=(1, None), height=dp(72)))
 
         # 본문: 상단 패딩 0
         body = BoxLayout(orientation="vertical", spacing=dp(12), padding=[0, 0, 0, 0])
@@ -606,3 +606,4 @@ class SlabApp(App):
 
 if __name__ == "__main__":
     SlabApp().run()
+
