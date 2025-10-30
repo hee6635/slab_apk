@@ -111,7 +111,7 @@ class AlnumInput(TextInput):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.size_hint_x = None
-               self.multiline = False
+        self.multiline = False
         self.halign = "left"
         self.padding = (dp(6), dp(5))     # v18 내부 여백
         self.font_name = FONT
@@ -513,119 +513,4 @@ class SettingsScreen(Screen):
         root.add_widget(body)
 
         # 1. 강번 고정부 변경
-        body.add_widget(self._leftlab("1. 강번 고정부 변경", w=dp(180)))
-        row1 = BoxLayout(size_hint=(1,None), height=dp(30), spacing=dp(8))
-        self.ed_prefix = AlnumInput(max_len=6, width=dp(70))  # 입력 4자리 기준 조정(요청 저장)
-        self.ed_prefix.text = self.app.st.get("prefix", "SG94")
-        row1.add_widget(self.ed_prefix)
-        row1.add_widget(self._gray("강번 맨앞 영문 + 숫자 고정부 변경", h=dp(30)))
-        body.add_widget(row1)
-
-        # 2. 정수 결과 반올림
-        body.add_widget(self._leftlab("2. 정수 결과 반올림", w=dp(180)))
-        row2 = BoxLayout(size_hint=(1,None), height=dp(30), spacing=dp(8))
-        self.sw_round = PillSwitch(active=bool(self.app.st.get("round", False)))
-        row2.add_widget(self.sw_round); row2.add_widget(Widget())
-        body.add_widget(row2)
-        body.add_widget(self._gray("출력부 소수값을 정수로 표시"))
-
-        # 3. 결과값 글자 크기
-        body.add_widget(self._leftlab("3. 결과값 글자 크기 (px)", w=dp(200)))
-        row3 = BoxLayout(size_hint=(1,None), height=dp(30), spacing=dp(8))
-        self.ed_out_font = DigitInput(max_len=2, allow_float=False, width=dp(45))
-        try:
-            self.ed_out_font.text = str(int(self.app.st.get("out_font", 15)))
-        except Exception:
-            self.ed_out_font.text = "15"
-        row3.add_widget(self.ed_out_font)
-        row3.add_widget(self._gray("결과 표시 영역의 글자 크기", h=dp(30)))
-        body.add_widget(row3)
-
-        # 4. 결과값 mm 표시 제거
-        body.add_widget(self._leftlab("4. 결과값 mm 표시 제거", w=dp(220)))
-        row4 = BoxLayout(size_hint=(1,None), height=dp(30), spacing=dp(8))
-        self.sw_hide_mm = PillSwitch(active=bool(self.app.st.get("hide_mm", False)))
-        row4.add_widget(self.sw_hide_mm); row4.add_widget(Widget())
-        body.add_widget(row4)
-        body.add_widget(self._gray("단위(mm) 문구 숨김"))
-
-        # 5. 절단 손실 길이 조정
-        body.add_widget(self._leftlab("5. 절단 손실 길이 조정", w=dp(220)))
-        row5 = BoxLayout(size_hint=(1,None), height=dp(30), spacing=dp(8))
-        self.ed_loss = DigitInput(max_len=2, allow_float=True, width=dp(45))
-        self.ed_loss.text = f"{float(self.app.st.get('loss_mm', 15.0)):.0f}"
-        row5.add_widget(self.ed_loss)
-        row5.add_widget(self._gray("절단 시 손실 보정 길이 (mm)", h=dp(30)))
-        body.add_widget(row5)
-
-        # 6. 모바일 대응 자동 폰트 크기 조절
-        body.add_widget(self._leftlab("6. 모바일 대응 자동 폰트 크기 조절", w=dp(280)))
-        row6 = BoxLayout(size_hint=(1,None), height=dp(30), spacing=dp(8))
-        self.sw_auto_font = PillSwitch(active=bool(self.app.st.get("auto_font", False)))
-        row6.add_widget(self.sw_auto_font); row6.add_widget(Widget())
-        body.add_widget(row6)
-        body.add_widget(self._gray("해상도에 맞게 입력부 폰트 조절"))
-
-        # 7. 출력값 위치 이동
-        body.add_widget(self._leftlab("7. 출력값 위치 이동", w=dp(200)))
-        row7 = BoxLayout(size_hint=(1,None), height=dp(30), spacing=dp(8))
-        self.sw_swap = PillSwitch(active=bool(self.app.st.get("swap_sections", False)))
-        row7.add_widget(self.sw_swap); row7.add_widget(Widget())
-        body.add_widget(row7)
-        body.add_widget(self._gray("ON 시 '절단 예상 길이'를 맨 아래로"))
-
-        # 하단 고정 표기
-        sig = Label(text="버전 1.0(설정)", font_name=FONT, color=(0.4,0.4,0.4,1),
-                    size_hint=(1,None), height=dp(22), halign="right", valign="middle")
-        sig.bind(size=lambda *_: setattr(sig, "text_size", sig.size))
-        root.add_widget(sig)
-
-    def _save_and_back(self):
-        try:
-            prefix = (self.ed_prefix.text or "SG94").upper()
-            if not prefix: prefix = "SG94"
-            try:
-                out_font = int(self.ed_out_font.text or "15")
-            except Exception:
-                out_font = 15
-            out_font = max(8, min(40, out_font))
-            loss = _num_or_none(self.ed_loss.text)
-            if loss is None or loss <= 0:
-                loss = 15.0
-
-            st = dict(self.app.st)
-            st.update({
-                "prefix": prefix,
-                "round": bool(self.sw_round.active),
-                "out_font": out_font,
-                "hide_mm": bool(self.sw_hide_mm.active),
-                "loss_mm": float(loss),
-                "auto_font": bool(self.sw_auto_font.active),
-                "swap_sections": bool(self.sw_swap.active),
-            })
-            save_settings(st)
-            self.app.st = st
-            self.app.main_screen.apply_settings(st)
-            self.app.open_main()
-        except Exception:
-            self.app.open_main()
-
-# ===== 앱 =====
-class SlabApp(App):
-    def build(self):
-        _install_global_crash_hook(self.user_data_dir)
-        self.st = load_settings()
-        self.sm = ScreenManager(transition=NoTransition())
-        self.main_screen = MainScreen(self, name="main")
-        self.settings_screen = SettingsScreen(self, name="settings")
-        self.sm.add_widget(self.main_screen)
-        self.sm.add_widget(self.settings_screen)
-        self.sm.current = "main"
-        return self.sm
-    def open_settings(self):
-        self.sm.current = "settings"
-    def open_main(self):
-        self.sm.current = "main"
-
-if __name__ == "__main__":
-    SlabApp().run()
+        body.add_widget(self._leftlab("1. 강번
