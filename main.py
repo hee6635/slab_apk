@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# 버전 18R3 - 설정 타이틀 32dp(박스 34dp) / 상단 여백 10dp / 타이틀↔1번 스페이서=28dp(총 40dp 체감) / 2줄 정렬 / 버튼 크기 통일 / 메인 하단 표기 수정
+# 버전 18R3 - 설정 타이틀 32dp(텍스처 자동 높이) / 상단 여백 10dp / 타이틀↔1번 스페이서=28dp(총 40dp 체감) / 2줄 정렬 / 버튼 크기 통일 / 메인 하단 표기 수정
 import os, sys, json, traceback
 from kivy.app import App
 from kivy.metrics import dp
@@ -78,7 +78,7 @@ class DigitInput(TextInput):
         self.size_hint_x = None
         self.padding = (dp(6), dp(5))
         self.multiline = False
-               self.halign = "left"
+        self.halign = "left"       # ✔ 들여쓰기 수정
         self.font_name = FONT
         self.font_size = dp(17)
         self.height = dp(30)
@@ -447,12 +447,20 @@ class SettingsScreen(Screen):
         self.app = app
         self.build_ui()
 
-    # 공통 라벨
+    # 공통 라벨 — 텍스처 높이에 자동 맞춤
     def _title(self, text):
-        lab = Label(text=text, font_name=FONT, font_size=dp(32),
-                    color=(0,0,0,1), halign="center", valign="middle",
-                    size_hint=(1,None), height=dp(34))  # 박스 34dp
-        lab.bind(size=lambda *_: setattr(lab, "text_size", lab.size))
+        lab = Label(
+            text=text, font_name=FONT, font_size=dp(32),
+            color=(0,0,0,1), halign="center", valign="middle",
+            size_hint=(1,None)  # 고정 height 제거
+        )
+        # 한 줄 유지: 세로 래핑 방지
+        lab.bind(size=lambda *_: setattr(lab, "text_size", (lab.width, None)))
+        # 텍스처(실제 글자) 높이에 맞춰 자동 조정 (최소 가드 28dp)
+        def _fit(*_):
+            h = lab.texture_size[1]
+            lab.height = max(dp(28), h)
+        lab.bind(texture_size=_fit)
         return lab
 
     def _black(self, text):
@@ -492,10 +500,10 @@ class SettingsScreen(Screen):
         topbar.add_widget(btn_save)
         root.add_widget(topbar)
 
-        # 타이틀
+        # 타이틀 (텍스처 자동 높이)
         root.add_widget(self._title("환경설정"))
 
-        # ▼ 타이틀↔1번 간격: spacer 28dp (root.spacing 6 + 28 + 6 = 40dp)
+        # 타이틀↔1번 간격: spacer 28dp (6 + 28 + 6 = 40dp 체감)
         root.add_widget(Widget(size_hint=(1,None), height=dp(28)))
 
         # 본문
