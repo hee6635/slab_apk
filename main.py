@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-# 버전 18R3-FINAL
+# 버전 18R3-FINAL-FLEX
 # - 설정 타이틀 32dp (텍스처 자동 높이로 내부 행간 최소화)
 # - 타이틀↔1번 간격: 스페이서 제거, body.padding_top = 32dp (체감 ~38~40dp)
 # - 상단 여백(루트 padding_top) 10dp 유지
+# - 하단 신축 스페이서로 여백 분산(버전 라벨 위에 Widget(size_hint=(1,1)))
 # - 2줄 정렬 / 버튼 크기 통일 / 메인 하단 표기 유지
 
 import os, sys, json, traceback
@@ -111,7 +112,7 @@ class AlnumInput(TextInput):
         self.size_hint_x = None
         self.padding = (dp(6), dp(5))
         self.multiline = False
-        self.halign = "left"
+               self.halign = "left"
         self.font_name = FONT
         self.font_size = dp(17)
         self.height = dp(30)
@@ -455,11 +456,11 @@ class SettingsScreen(Screen):
         lab = Label(
             text=text, font_name=FONT, font_size=dp(32),
             color=(0,0,0,1), halign="center", valign="middle",
-            size_hint=(1,None)  # 고정 height 제거
+            size_hint=(1,None)
         )
         # 한 줄 유지 (세로 래핑 방지)
         lab.bind(size=lambda *_: setattr(lab, "text_size", (lab.width, None)))
-        # 텍스처(실제 글자) 높이에 맞춰 자동 조정 (최소 28dp 가드)
+        # 텍스처 높이에 맞춰 자동 조정 (최소 28dp 가드)
         def _fit(*_):
             h = lab.texture_size[1]
             lab.height = max(dp(28), h)
@@ -503,25 +504,23 @@ class SettingsScreen(Screen):
         topbar.add_widget(btn_save)
         root.add_widget(topbar)
 
-        # 타이틀 (텍스처 자동 높이)
+        # 타이틀
         root.add_widget(self._title("환경설정"))
 
-        # ✅ 스페이서 제거, 대신 body 상단 패딩으로 간격 제어
+        # ✅ 스페이서 제거(고정 위젯 없음), body 상단 패딩으로만 타이틀↔1번 간격 32dp 유지
         body = BoxLayout(orientation="vertical", spacing=dp(12), padding=[0, dp(32), 0, 0])
         root.add_widget(body)
 
-        # 1.
+        # 1~7 항목
         body.add_widget(self._black("1. 강번 고정부 변경"))
         self.ed_prefix = AlnumInput(max_len=6, width=dp(70))
         self.ed_prefix.text = self.app.st.get("prefix", "SG94")
         body.add_widget(self._indent_row(self.ed_prefix, self._gray("강번 맨앞 영문 + 숫자 고정부 변경")))
 
-        # 2.
         body.add_widget(self._black("2. 정수 결과 반올림"))
         self.sw_round = PillSwitch(active=bool(self.app.st.get("round", False)))
         body.add_widget(self._indent_row(self.sw_round, self._gray("출력부 소수값을 정수로 표시")))
 
-        # 3.
         body.add_widget(self._black("3. 결과값 글자 크기"))
         self.ed_out_font = DigitInput(max_len=2, allow_float=False, width=dp(45))
         try:
@@ -530,28 +529,27 @@ class SettingsScreen(Screen):
             self.ed_out_font.text = "15"
         body.add_widget(self._indent_row(self.ed_out_font, self._gray("결과 표시 라벨 폰트 크기")))
 
-        # 4.
         body.add_widget(self._black("4. 결과값 mm 표시 제거"))
         self.sw_hide_mm = PillSwitch(active=bool(self.app.st.get("hide_mm", False)))
         body.add_widget(self._indent_row(self.sw_hide_mm, self._gray("단위(mm) 문구 숨김")))
 
-        # 5.
         body.add_widget(self._black("5. 절단 손실 길이 조정"))
         self.ed_loss = DigitInput(max_len=2, allow_float=True, width=dp(45))
         self.ed_loss.text = f"{float(self.app.st.get('loss_mm', 15.0)):.0f}"
         body.add_widget(self._indent_row(self.ed_loss, self._gray("절단 시 손실 보정 길이 (mm)")))
 
-        # 6.
         body.add_widget(self._black("6. 모바일 대응 자동 폰트 크기 조절"))
         self.sw_auto_font = PillSwitch(active=bool(self.app.st.get("auto_font", False)))
         body.add_widget(self._indent_row(self.sw_auto_font, self._gray("해상도에 맞게 입력부 폰트 조절")))
 
-        # 7.
         body.add_widget(self._black("7. 출력값 위치 이동"))
         self.sw_swap = PillSwitch(active=bool(self.app.st.get("swap_sections", False)))
         body.add_widget(self._indent_row(self.sw_swap, self._gray("절단 예상 길이를 아래로 위치")))
 
-        # 하단 버전 표기 — 유지(버전 1.0)
+        # ✅ 아래쪽 신축 스페이서: 남는 여백을 전부 하단으로 몰아줘서 화면별 균형 유지
+        root.add_widget(Widget(size_hint=(1,1)))
+
+        # 하단 버전 표기
         sig = Label(text="버전 1.0", font_name=FONT, color=(0.4,0.4,0.4,1),
                     size_hint=(1,None), height=dp(22), halign="right", valign="middle")
         sig.bind(size=lambda *_: setattr(sig, "text_size", sig.size))
