@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-# 버전 18R3-FINAL-FLEX-ORDERED
-# - 설정 타이틀(텍스처 자동 높이)
-# - 타이틀 아래 고정 스페이서 72dp  ← 간격 확실히 확보
-# - body 상단 패딩 0
+# 버전 18R3-FINAL-FLEX-40-FIX
+# - 타이틀 높이 고정(height=dp(44))으로 레이아웃 타이밍 문제 제거
+# - 타이틀↔1번 간격: body 내부 첫 자식으로 고정 스페이서(권장 48dp) 삽입
+# - root 쪽 간격 위젯/패딩으로는 간격을 만들지 않음
 # - 하단 신축 스페이서로 남는 여백 흡수
-# - BoxLayout 역순 배치 보정: 설정 화면은 add_widget(index=0)로 위→아래 순서 고정
+# - 기능은 기존과 동일
 
 import os, sys, json, traceback
 from kivy.app import App
@@ -200,7 +200,6 @@ class MainScreen(Screen):
 
     def build_ui(self):
         Window.clearcolor = (0.93, 0.93, 0.93, 1)
-
         root = BoxLayout(orientation="vertical",
                          padding=[dp(12), dp(10), dp(12), dp(6)],
                          spacing=dp(6))
@@ -334,7 +333,7 @@ class MainScreen(Screen):
         out_wrap.add_widget(self.out)
         root.add_widget(out_wrap)
 
-        # 하단 표기
+        # 하단 표기 — 문구 변경(메인)
         sig = Label(text="made by ft10350", font_name=FONT, color=(0.4,0.4,0.4,1),
                     size_hint=(1,None), height=dp(22), halign="right", valign="middle")
         sig.bind(size=lambda *_: setattr(sig, "text_size", sig.size))
@@ -452,19 +451,14 @@ class SettingsScreen(Screen):
         self.app = app
         self.build_ui()
 
-    # 타이틀(텍스처 높이에 맞춤)
+    # 타이틀: 고정 높이(44dp) – 텍스처 기반 자동 높이 제거
     def _title(self, text):
         lab = Label(
             text=text, font_name=FONT, font_size=dp(32),
             color=(0,0,0,1), halign="center", valign="middle",
-            size_hint=(1,None)
+            size_hint=(1,None), height=dp(44)
         )
-        lab.height = dp(44)  # 초기 프레임 안정화
-        lab.bind(size=lambda *_: setattr(lab, "text_size", (lab.width, None)))
-        def _fit(*_):
-            h = lab.texture_size[1]
-            lab.height = max(dp(28), h)
-        lab.bind(texture_size=_fit)
+        lab.bind(size=lambda *_: setattr(lab, "text_size", lab.size))
         return lab
 
     def _black(self, text):
@@ -490,30 +484,31 @@ class SettingsScreen(Screen):
 
     def build_ui(self):
         Window.clearcolor = (0.93, 0.93, 0.93, 1)
-
         root = BoxLayout(orientation="vertical",
                          padding=[dp(12), dp(10), dp(12), dp(6)],
                          spacing=dp(6))
         self.add_widget(root)
 
-        # (1) 상단바(저장) — 맨 위에 오도록 index=0
+        # 상단바(저장)
         topbar = BoxLayout(size_hint=(1,None), height=dp(40), spacing=0)
         topbar.add_widget(Widget())
         btn_save = RoundedButton(text="저장", size_hint=(None,1), width=dp(72),
                                  bg_color=[0.23,0.53,0.23,1], fg_color=[1,1,1,1])
         btn_save.bind(on_release=lambda *_: self._save_and_back())
         topbar.add_widget(btn_save)
-        root.add_widget(topbar, index=0)
+        root.add_widget(topbar)
 
-        # (2) 타이틀 — 그 아래
-        root.add_widget(self._title("환경설정"), index=0)
+        # 타이틀
+        root.add_widget(self._title("환경설정"))
 
-        # (3) 타이틀 아래 고정 스페이서 72dp
-        root.add_widget(Widget(size_hint=(1, None), height=dp(72)), index=0)
-
-        # (4) 본문
+        # 본문 컨테이너 (상단 패딩 0)
         body = BoxLayout(orientation="vertical", spacing=dp(12), padding=[0, 0, 0, 0])
+        root.add_widget(body)
 
+        # ⬇ 타이틀 아래 고정 간격: body의 첫 자식으로 48dp (필요시 40~56로 조정)
+        body.add_widget(Widget(size_hint=(1, None), height=dp(48)))
+
+        # 1~7 항목
         body.add_widget(self._black("1. 강번 고정부 변경"))
         self.ed_prefix = AlnumInput(max_len=6, width=dp(70))
         self.ed_prefix.text = self.app.st.get("prefix", "SG94")
@@ -548,16 +543,14 @@ class SettingsScreen(Screen):
         self.sw_swap = PillSwitch(active=bool(self.app.st.get("swap_sections", False)))
         body.add_widget(self._indent_row(self.sw_swap, self._gray("절단 예상 길이를 아래로 위치")))
 
-        root.add_widget(body, index=0)
+        # 아래쪽 신축 스페이서
+        root.add_widget(Widget(size_hint=(1,1)))
 
-        # (5) 아래쪽 신축 스페이서 — 남는 공간 흡수
-        root.add_widget(Widget(size_hint=(1,1)), index=0)
-
-        # (6) 하단 버전 표기 — 맨 아래
+        # 하단 버전 표기
         sig = Label(text="버전 1.0", font_name=FONT, color=(0.4,0.4,0.4,1),
                     size_hint=(1,None), height=dp(22), halign="right", valign="middle")
         sig.bind(size=lambda *_: setattr(sig, "text_size", sig.size))
-        root.add_widget(sig, index=0)
+        root.add_widget(sig)
 
     def _save_and_back(self):
         try:
