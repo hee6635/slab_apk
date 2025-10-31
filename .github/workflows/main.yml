@@ -31,15 +31,38 @@ jobs:
         with:
           workdir: .
           buildozer_version: stable
+          # command: buildozer -v android debug  # 필요시 명시
 
       # ③ 권한 복구 (Post job cleanup 오류 방지)
       - name: Fix workspace permissions
         run: sudo chown -R $USER:$USER "${{ github.workspace }}"
 
-      # ④ 빌드 결과물 업로드
+      # ④ APK 위치 로깅 + 경로 선택 (buildozer outputs가 비는 상황 대비)
+      - name: Locate APK
+        id: locate
+        shell: bash
+        run: |
+          echo "buildozer output filename: '${{ steps.buildozer.outputs.filename }}'"
+          # 1) buildozer가 알려준 경로 우선
+          APK="${{ steps.buildozer.outputs.filename }}"
+          # 2) 없으면 bin/*.apk 탐색
+          if [[ -z "$APK" || ! -f "$APK" ]]; then
+            echo "Fallback to bin/*.apk search"
+            APK="$(ls -1 bin/*.apk 2>/dev/null | head -n 1 || true)"
+          fi
+          # 3) 그래도 없으면 전체 탐색(깊이 제한)
+          if [[ -z "$APK" || ! -f "$APK" ]]; then
+            echo "Fallback to repo-wide search"
+            APK="$(find . -maxdepth 5 -type f -name '*.apk' | head -n 1 || true)"
+          fi
+          echo "APK path resolved to: $APK"
+          echo "apk_path=$APK" >> "$GITHUB_OUTPUT"
+
+      # ⑤ 빌드 결과물 업로드 (여기서 성공하면 요약 화면에 다운로드 버튼 생성)
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: slab_apk-debug
-          path: ${{ steps.buildozer.outputs.filename }}
-
+          name: slab_apk-${{ github.run_number }}
+          path: ${{ steps.locate.outputs.apk_path }}
+          if-no-files-found: error
+          retention-days: 14
