@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# 버전 18R3-FINAL-FLEX-40
-# - 타이틀(텍스처 자동 높이) 아래 고정 스페이서 40dp
+# 버전 18R3-FINAL-FLEX-72
+# - 타이틀(텍스처 자동 높이) 아래 고정 스페이서 72dp
 # - body 상단 패딩 0
 # - 하단 신축 스페이서로 남는 여백 흡수
 # - 나머지 UI/기능 동일
@@ -254,7 +254,7 @@ class MainScreen(Screen):
                               height=dp(30), spacing=dp(4))
         lab_t = Label(text="Slab 실길이:", font_name=FONT, color=(0,0,0,1),
                       size_hint=(None,1), width=dp(104), halign="right", valign="middle")
-        lab_t.bind(size=lambda *_: setattr(lab_t, "text_size", lab_t.size))
+        lab_t.bind(size=lambda *_: setattr(lab_t, "text_size", lab.size))
         row_total.add_widget(lab_t)
         self.in_total = DigitInput(max_len=5, allow_float=True, width=dp(74))
         row_total.add_widget(self.in_total)
@@ -451,13 +451,14 @@ class SettingsScreen(Screen):
         self.app = app
         self.build_ui()
 
-    # 공통 라벨 — 텍스처 자동 높이
+    # 공통 라벨 — 텍스처 자동 높이 (초기 height 부여)
     def _title(self, text):
         lab = Label(
             text=text, font_name=FONT, font_size=dp(32),
             color=(0,0,0,1), halign="center", valign="middle",
             size_hint=(1,None)
         )
+        lab.height = dp(44)  # ★ 초기 높이 보장
         lab.bind(size=lambda *_: setattr(lab, "text_size", (lab.width, None)))
         def _fit(*_):
             h = lab.texture_size[1]
@@ -505,7 +506,7 @@ class SettingsScreen(Screen):
         # 타이틀
         root.add_widget(self._title("환경설정"))
 
-        # ⬇ 고정 40dp 간격 확보
+        # ⬇ 고정 72dp 간격 확보 (기존 40dp → 72dp)
         root.add_widget(Widget(size_hint=(1, None), height=dp(72)))
 
         # 본문: 상단 패딩 0
@@ -606,4 +607,3 @@ class SlabApp(App):
 
 if __name__ == "__main__":
     SlabApp().run()
-
