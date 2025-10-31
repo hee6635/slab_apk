@@ -575,7 +575,7 @@ class SettingsScreen(Screen):
         self.ed_prefix.text = self.app.st.get("prefix", "SG94")
         content.add_widget(self._indent_row(self.ed_prefix, self._gray("강번 맨앞 영문 + 숫자 고정부 변경")))
 
-        content.add_widget(self._black("2. 정수 결과 반올림"))
+        content.add_widget(self._black("2. 소수점 반올림"))
         self.sw_round = PillSwitch(active=bool(self.app.st.get("round", False)))
         content.add_widget(self._indent_row(self.sw_round, self._gray("출력부 소수값을 정수로 표시")))
 
@@ -585,20 +585,20 @@ class SettingsScreen(Screen):
             self.ed_out_font.text = str(int(self.app.st.get("out_font", 15)))
         except Exception:
             self.ed_out_font.text = "15"
-        content.add_widget(self._indent_row(self.ed_out_font, self._gray("결과 영역 폰트 크기")))
+        content.add_widget(self._indent_row(self.ed_out_font, self._gray("결과값 영역 폰트 크기 조절")))
 
-        content.add_widget(self._black("4. 결과값 mm 표시 제거"))
+        content.add_widget(self._black("4. 결과값 mm 표시"))
         self.sw_hide_mm = PillSwitch(active=bool(self.app.st.get("hide_mm", False)))
         content.add_widget(self._indent_row(self.sw_hide_mm, self._gray("단위(mm) 문구 숨김")))
 
-        content.add_widget(self._black("5. 절단 손실 길이 조정"))
+        content.add_widget(self._black("5. 절단 손실 보정"))
         self.ed_loss = DigitInput(max_len=2, allow_float=True, width=dp(45))
         self.ed_loss.text = f"{float(self.app.st.get('loss_mm', 15.0)):.0f}"
         content.add_widget(self._indent_row(self.ed_loss, self._gray("절단 시 손실 보정 길이 (mm)")))
 
         content.add_widget(self._black("6. 큰글자용 화면 모드"))
         self.sw_auto_font = PillSwitch(active=bool(self.app.st.get("auto_font", False)))
-        content.add_widget(self._indent_row(self.sw_auto_font, self._gray("라벨·입력 폭을 넓혀 줄넘김 방지")))
+        content.add_widget(self._indent_row(self.sw_auto_font, self._gray("고정부·입력 폭을 넓혀 줄넘김 방지")))
 
         content.add_widget(self._black("7. 결과값 위치 이동"))
         self.sw_swap = PillSwitch(active=bool(self.app.st.get("swap_sections", False)))
@@ -661,3 +661,4 @@ class SlabApp(App):
 
 if __name__ == "__main__":
     SlabApp().run()
+
