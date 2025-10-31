@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-# 버전 18R3-FINAL-FLEX-40-FIX
-# - 타이틀 높이 고정(height=dp(44))으로 레이아웃 타이밍 문제 제거
-# - 타이틀↔1번 간격: body 내부 첫 자식으로 고정 스페이서(권장 48dp) 삽입
-# - root 쪽 간격 위젯/패딩으로는 간격을 만들지 않음
+# 버전 18R3-FINAL-FLEX-ROOTSPACER
+# - 타이틀(텍스처 자동 높이) 아래 고정 스페이서 48dp (root 레벨)
+# - body 상단 패딩 0 (중복 여백 제거)
 # - 하단 신축 스페이서로 남는 여백 흡수
-# - 기능은 기존과 동일
+# - 나머지 UI/기능 동일
 
 import os, sys, json, traceback
 from kivy.app import App
@@ -22,6 +21,7 @@ from kivy.graphics import Color, RoundedRectangle, Ellipse
 from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition
 
 FONT = "NanumGothic"
+SETINGS_VERSION_LABEL = "버전 1.0"
 SETTINGS_FILE = "settings.json"
 
 # ===== 유틸 =====
@@ -59,6 +59,7 @@ class RoundedButton(ButtonBehavior, Label):
     radius = NumericProperty(dp(8))
     bg_color = ListProperty([0.23, 0.53, 0.23, 1])
     fg_color = ListProperty([1, 1, 1, 1])
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.font_name = FONT
@@ -71,14 +72,18 @@ class RoundedButton(ButtonBehavior, Label):
             self._r = RoundedRectangle(pos=self.pos, size=self.size,
                                        radius=[(self.radius, self.radius)]*4)
         self.bind(pos=self._sync_bg, size=self._sync_bg, bg_color=self._recolor)
+
     def _sync_bg(self, *_):
         self._r.pos, self._r.size = self.pos, self.size
+
     def _recolor(self, *_):
         self._c.rgba = self.bg_color
+
 
 class DigitInput(TextInput):
     max_len = NumericProperty(3)
     allow_float = BooleanProperty(False)
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.size_hint_x = None
@@ -91,6 +96,7 @@ class DigitInput(TextInput):
         self.background_normal = ""
         self.background_active = ""
         self.cursor_width = dp(2)
+
     def insert_text(self, substring, from_undo=False):
         if self.allow_float:
             filtered = "".join(ch for ch in substring if ch.isdigit() or ch == ".")
@@ -105,8 +111,10 @@ class DigitInput(TextInput):
             filtered = filtered[:remain]
         return super().insert_text(filtered, from_undo=from_undo)
 
+
 class AlnumInput(TextInput):
     max_len = NumericProperty(6)
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.size_hint_x = None
@@ -119,6 +127,7 @@ class AlnumInput(TextInput):
         self.background_normal = ""
         self.background_active = ""
         self.cursor_width = dp(2)
+
     def insert_text(self, substring, from_undo=False):
         filtered = "".join(ch for ch in substring.upper() if ch.isalnum())
         remain = max(0, self.max_len - len(self.text))
@@ -128,8 +137,10 @@ class AlnumInput(TextInput):
             filtered = filtered[:remain]
         return super().insert_text(filtered, from_undo=from_undo)
 
+
 class PillSwitch(ButtonBehavior, Widget):
     active = BooleanProperty(False)
+
     def __init__(self, active=False, **kwargs):
         super().__init__(**kwargs)
         self.size_hint = (None, None)
@@ -144,6 +155,7 @@ class PillSwitch(ButtonBehavior, Widget):
                                  size=(self.height-dp(4), self.height-dp(4)))
         self.bind(pos=self._sync, size=self._sync, active=self._render)
         self._render()
+
     def _sync(self, *_):
         self._bg.pos = self.pos
         self._bg.size = self.size
@@ -154,9 +166,11 @@ class PillSwitch(ButtonBehavior, Widget):
         else:
             self._knob.pos = (self.x + pad, self.y + pad)
         self._knob.size = (r, r)
+
     def _render(self, *_):
         self._bg_color.rgba = (0.15, 0.6, 0.2, 1) if self.active else (0.65, 0.65, 0.65, 1)
         self._sync()
+
     def on_release(self, *_):
         self.active = not self.active
         self._render()
@@ -208,30 +222,30 @@ class MainScreen(Screen):
         # 상단바 (오른쪽 설정)
         topbar = BoxLayout(size_hint=(1, None), height=dp(40), spacing=0)
         topbar.add_widget(Widget())
-        btn_settings = RoundedButton(text="설정", size_hint=(None,1), width=dp(72),
-                                     bg_color=[0.27,0.27,0.27,1], fg_color=[1,1,1,1])
+        btn_settings = RoundedButton(text="설정", size_hint=(None, 1), width=dp(72),
+                                     bg_color=[0.27, 0.27, 0.27, 1], fg_color=[1, 1, 1, 1])
         btn_settings.bind(on_release=lambda *_: self.app.open_settings())
         topbar.add_widget(btn_settings)
         root.add_widget(topbar)
 
         # 제목
         title = Label(text="후판 계산기", font_name=FONT, font_size=dp(32),
-                      color=(0,0,0,1), halign="center", valign="middle",
-                      size_hint=(1,None), height=dp(44))
+                      color=(0, 0, 0, 1), halign="center", valign="middle",
+                      size_hint=(1, None), height=dp(44))
         title.bind(size=lambda *_: setattr(title, "text_size", title.size))
         root.add_widget(title)
 
         # 강번 입력
-        row_code = BoxLayout(orientation="horizontal", size_hint=(1,None),
+        row_code = BoxLayout(orientation="horizontal", size_hint=(1, None),
                              height=dp(30), spacing=dp(4))
-        lab = Label(text="강번 입력:", font_name=FONT, color=(0,0,0,1),
-                    size_hint=(None,1), width=dp(92), halign="right", valign="middle")
+        lab = Label(text="강번 입력:", font_name=FONT, color=(0, 0, 0, 1),
+                    size_hint=(None, 1), width=dp(92), halign="right", valign="middle")
         lab.bind(size=lambda *_: setattr(lab, "text_size", lab.size))
         row_code.add_widget(lab)
 
         self.lab_prefix = Label(text=self.app.st.get("prefix", "SG94"),
-                                font_name=FONT, color=(0,0,0,1),
-                                size_hint=(None,1), width=dp(44),
+                                font_name=FONT, color=(0, 0, 0, 1),
+                                size_hint=(None, 1), width=dp(44),
                                 halign="center", valign="middle")
         self.lab_prefix.bind(size=lambda *_: setattr(self.lab_prefix, "text_size", self.lab_prefix.size))
         row_code.add_widget(self.lab_prefix)
@@ -240,8 +254,8 @@ class MainScreen(Screen):
         self.in_code_front.bind(text=self._auto_move_back)
         row_code.add_widget(self.in_code_front)
 
-        dash = Label(text="-0", font_name=FONT, color=(0,0,0,1),
-                     size_hint=(None,1), width=dp(22), halign="center", valign="middle")
+        dash = Label(text="-0", font_name=FONT, color=(0, 0, 0, 1),
+                     size_hint=(None, 1), width=dp(22), halign="center", valign="middle")
         dash.bind(size=lambda *_: setattr(dash, "text_size", dash.size))
         row_code.add_widget(dash)
 
@@ -250,10 +264,10 @@ class MainScreen(Screen):
         root.add_widget(row_code)
 
         # Slab 실길이
-        row_total = BoxLayout(orientation="horizontal", size_hint=(1,None),
+        row_total = BoxLayout(orientation="horizontal", size_hint=(1, None),
                               height=dp(30), spacing=dp(4))
-        lab_t = Label(text="Slab 실길이:", font_name=FONT, color=(0,0,0,1),
-                      size_hint=(None,1), width=dp(104), halign="right", valign="middle")
+        lab_t = Label(text="Slab 실길이:", font_name=FONT, color=(0, 0, 0, 1),
+                      size_hint=(None, 1), width=dp(104), halign="right", valign="middle")
         lab_t.bind(size=lambda *_: setattr(lab_t, "text_size", lab_t.size))
         row_total.add_widget(lab_t)
         self.in_total = DigitInput(max_len=5, allow_float=True, width=dp(74))
@@ -262,32 +276,33 @@ class MainScreen(Screen):
         root.add_widget(row_total)
 
         # 지시길이 1~3
-        grid = GridLayout(cols=4, size_hint=(1,None), height=dp(30*3+8*2),
+        grid = GridLayout(cols=4, size_hint=(1, None), height=dp(30*3 + 8*2),
                           row_default_height=dp(30), row_force_default=True, spacing=dp(8))
         def _lab(text, w):
-            L = Label(text=text, font_name=FONT, color=(0,0,0,1),
-                      size_hint=(None,1), width=w, halign="right", valign="middle")
+            L = Label(text=text, font_name=FONT, color=(0, 0, 0, 1),
+                      size_hint=(None, 1), width=w, halign="right", valign="middle")
             L.bind(size=lambda *_: setattr(L, "text_size", L.size))
             return L
+
         self.in_p1 = DigitInput(max_len=4, allow_float=True, width=dp(66))
         self.in_p2 = DigitInput(max_len=4, allow_float=True, width=dp(66))
         self.in_p3 = DigitInput(max_len=4, allow_float=True, width=dp(66))
 
         grid.add_widget(_lab("1번 지시길이:", dp(104))); grid.add_widget(self.in_p1); grid.add_widget(Label()); grid.add_widget(Label())
         grid.add_widget(_lab("2번 지시길이:", dp(104))); grid.add_widget(self.in_p2)
-        b21 = RoundedButton(text="← 1번", bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1],
-                            size_hint=(None,1), width=dp(58))
+        b21 = RoundedButton(text="← 1번", bg_color=[0.8, 0.8, 0.8, 1], fg_color=[0, 0, 0, 1],
+                            size_hint=(None, 1), width=dp(58))
         b21.font_size = dp(17)
         b21.bind(on_release=lambda *_: self._copy(self.in_p1, self.in_p2))
         grid.add_widget(b21); grid.add_widget(Label())
         grid.add_widget(_lab("3번 지시길이:", dp(104))); grid.add_widget(self.in_p3)
         btn_row = BoxLayout(orientation="horizontal", spacing=dp(8),
-                            size_hint=(None,1), width=dp(58*2+8))
-        b31 = RoundedButton(text="← 1번", bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1],
-                            size_hint=(None,1), width=dp(58))
+                            size_hint=(None, 1), width=dp(58*2 + 8))
+        b31 = RoundedButton(text="← 1번", bg_color=[0.8, 0.8, 0.8, 1], fg_color=[0, 0, 0, 1],
+                            size_hint=(None, 1), width=dp(58))
         b31.font_size = dp(17)
-        b32 = RoundedButton(text="← 2번", bg_color=[0.8,0.8,0.8,1], fg_color=[0,0,0,1],
-                            size_hint=(None,1), width=dp(58))
+        b32 = RoundedButton(text="← 2번", bg_color=[0.8, 0.8, 0.8, 1], fg_color=[0, 0, 0, 1],
+                            size_hint=(None, 1), width=dp(58))
         b32.font_size = dp(17)
         b31.bind(on_release=lambda *_: self._copy(self.in_p1, self.in_p3))
         b32.bind(on_release=lambda *_: self._copy(self.in_p2, self.in_p3))
@@ -297,45 +312,45 @@ class MainScreen(Screen):
 
         # 계산 버튼
         btn_calc = RoundedButton(text="계산하기", bg_color=[0.23, 0.53, 0.23, 1],
-                                 fg_color=[1,1,1,1], size_hint=(1,None),
+                                 fg_color=[1, 1, 1, 1], size_hint=(1, None),
                                  height=dp(44), radius=dp(10))
         btn_calc.bind(on_release=lambda *_: self.calculate())
         root.add_widget(btn_calc)
 
         # 경고 바
         self.warn_bar = BoxLayout(orientation="horizontal", spacing=dp(6),
-                                  size_hint=(1,None), height=0, opacity=0)
+                                  size_hint=(1, None), height=0, opacity=0)
         icon = None
         if os.path.exists("warning.png"):
             try:
-                icon = Image(source="warning.png", size_hint=(None,None), size=(dp(18),dp(18)))
+                icon = Image(source="warning.png", size_hint=(None, None), size=(dp(18), dp(18)))
             except Exception:
                 pass
         if icon is None:
-            icon = Label(text="⚠", font_name=FONT, color=(1,0.2,0.2,1),
-                         size_hint=(None,None), size=(dp(18),dp(18)))
-        self.warn_msg = Label(text="", font_name=FONT, color=(0,0,0,1),
+            icon = Label(text="⚠", font_name=FONT, color=(1, 0.2, 0.2, 1),
+                         size_hint=(None, None), size=(dp(18), dp(18)))
+        self.warn_msg = Label(text="", font_name=FONT, color=(0, 0, 0, 1),
                               halign="left", valign="middle")
         self.warn_msg.bind(size=lambda *_: setattr(self.warn_msg, "text_size", self.warn_msg.size))
         self.warn_bar.add_widget(icon); self.warn_bar.add_widget(self.warn_msg)
         root.add_widget(self.warn_bar)
 
         # 출력(하얀 박스)
-        out_wrap = BoxLayout(orientation="vertical", size_hint=(1,1), padding=[0,0,0,0])
-        self.out = Label(text="", font_name=FONT, color=(0,0,0,1),
-                         size_hint=(1,1), halign="left", valign="top")
+        out_wrap = BoxLayout(orientation="vertical", size_hint=(1, 1), padding=[0, 0, 0, 0])
+        self.out = Label(text="", font_name=FONT, color=(0, 0, 0, 1),
+                         size_hint=(1, 1), halign="left", valign="top")
         with self.out.canvas.before:
-            Color(1,1,1,1)
+            Color(1, 1, 1, 1)
             self._bg_rect = RoundedRectangle(pos=self.out.pos, size=self.out.size,
-                                             radius=[(dp(6),dp(6))]*4)
+                                             radius=[(dp(6), dp(6))]*4)
         self.out.bind(size=lambda *_: setattr(self.out, "text_size", (self.out.width - dp(12), None)))
         self.out.bind(size=self._bg_follow, pos=self._bg_follow)
         out_wrap.add_widget(self.out)
         root.add_widget(out_wrap)
 
-        # 하단 표기 — 문구 변경(메인)
-        sig = Label(text="made by ft10350", font_name=FONT, color=(0.4,0.4,0.4,1),
-                    size_hint=(1,None), height=dp(22), halign="right", valign="middle")
+        # 하단 표기
+        sig = Label(text="made by ft10350", font_name=FONT, color=(0.4, 0.4, 0.4, 1),
+                    size_hint=(1, None), height=dp(22), halign="right", valign="middle")
         sig.bind(size=lambda *_: setattr(sig, "text_size", sig.size))
         root.add_widget(sig)
 
@@ -405,6 +420,7 @@ class MainScreen(Screen):
             do_round = bool(st.get("round", False))
             hide_mm = bool(st.get("hide_mm", False))
             unit = "" if hide_mm else " mm"
+
             def fmt(x):
                 return f"{round_half_up(x)}" if do_round else f"{x:.1f}"
 
@@ -451,32 +467,36 @@ class SettingsScreen(Screen):
         self.app = app
         self.build_ui()
 
-    # 타이틀: 고정 높이(44dp) – 텍스처 기반 자동 높이 제거
+    # 공통 라벨 — 텍스처 자동 높이
     def _title(self, text):
         lab = Label(
             text=text, font_name=FONT, font_size=dp(32),
-            color=(0,0,0,1), halign="center", valign="middle",
-            size_hint=(1,None), height=dp(44)
+            color=(0, 0, 0, 1), halign="center", valign="middle",
+            size_hint=(1, None)
         )
-        lab.bind(size=lambda *_: setattr(lab, "text_size", lab.size))
+        lab.bind(size=lambda *_: setattr(lab, "text_size", (lab.width, None)))
+        def _fit(*_):
+            h = lab.texture_size[1]
+            lab.height = max(dp(28), h)
+        lab.bind(texture_size=_fit)
         return lab
 
     def _black(self, text):
-        lab = Label(text=text, font_name=FONT, color=(0,0,0,1),
-                    size_hint=(1,None), height=dp(24),
+        lab = Label(text=text, font_name=FONT, color=(0, 0, 0, 1),
+                    size_hint=(1, None), height=dp(24),
                     halign="left", valign="middle")
         lab.bind(size=lambda *_: setattr(lab, "text_size", lab.size))
         return lab
 
     def _gray(self, text):
-        lab = Label(text=text, font_name=FONT, color=(0.4,0.4,0.4,1),
-                    size_hint=(1,None), height=dp(24),
+        lab = Label(text=text, font_name=FONT, color=(0.4, 0.4, 0.4, 1),
+                    size_hint=(1, None), height=dp(24),
                     halign="left", valign="middle")
         lab.bind(size=lambda *_: setattr(lab, "text_size", lab.size))
         return lab
 
     def _indent_row(self, *widgets):
-        row = BoxLayout(orientation="horizontal", size_hint=(1,None),
+        row = BoxLayout(orientation="horizontal", size_hint=(1, None),
                         height=dp(30), spacing=dp(8), padding=[dp(12), 0, 0, 0])
         for w in widgets:
             row.add_widget(w)
@@ -490,10 +510,10 @@ class SettingsScreen(Screen):
         self.add_widget(root)
 
         # 상단바(저장)
-        topbar = BoxLayout(size_hint=(1,None), height=dp(40), spacing=0)
+        topbar = BoxLayout(size_hint=(1, None), height=dp(40), spacing=0)
         topbar.add_widget(Widget())
-        btn_save = RoundedButton(text="저장", size_hint=(None,1), width=dp(72),
-                                 bg_color=[0.23,0.53,0.23,1], fg_color=[1,1,1,1])
+        btn_save = RoundedButton(text="저장", size_hint=(None, 1), width=dp(72),
+                                 bg_color=[0.23, 0.53, 0.23, 1], fg_color=[1, 1, 1, 1])
         btn_save.bind(on_release=lambda *_: self._save_and_back())
         topbar.add_widget(btn_save)
         root.add_widget(topbar)
@@ -501,12 +521,12 @@ class SettingsScreen(Screen):
         # 타이틀
         root.add_widget(self._title("환경설정"))
 
-        # 본문 컨테이너 (상단 패딩 0)
+        # ⬇ 타이틀 아래 고정 간격 (root 레벨, 48dp)
+        root.add_widget(Widget(size_hint=(1, None), height=dp(48)))
+
+        # 본문 (상단 패딩 0)
         body = BoxLayout(orientation="vertical", spacing=dp(12), padding=[0, 0, 0, 0])
         root.add_widget(body)
-
-        # ⬇ 타이틀 아래 고정 간격: body의 첫 자식으로 48dp (필요시 40~56로 조정)
-        body.add_widget(Widget(size_hint=(1, None), height=dp(48)))
 
         # 1~7 항목
         body.add_widget(self._black("1. 강번 고정부 변경"))
@@ -544,11 +564,11 @@ class SettingsScreen(Screen):
         body.add_widget(self._indent_row(self.sw_swap, self._gray("절단 예상 길이를 아래로 위치")))
 
         # 아래쪽 신축 스페이서
-        root.add_widget(Widget(size_hint=(1,1)))
+        root.add_widget(Widget(size_hint=(1, 1)))
 
         # 하단 버전 표기
-        sig = Label(text="버전 1.0", font_name=FONT, color=(0.4,0.4,0.4,1),
-                    size_hint=(1,None), height=dp(22), halign="right", valign="middle")
+        sig = Label(text=SETINGS_VERSION_LABEL, font_name=FONT, color=(0.4, 0.4, 0.4, 1),
+                    size_hint=(1, None), height=dp(22), halign="right", valign="middle")
         sig.bind(size=lambda *_: setattr(sig, "text_size", sig.size))
         root.add_widget(sig)
 
@@ -595,8 +615,10 @@ class SlabApp(App):
         self.sm.add_widget(self.settings_screen)
         self.sm.current = "main"
         return self.sm
+
     def open_settings(self):
         self.sm.current = "settings"
+
     def open_main(self):
         self.sm.current = "main"
 
